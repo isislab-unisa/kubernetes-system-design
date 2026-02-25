@@ -8,3 +8,8 @@
     - use VSCode extension for excalidraw to edit diagrams in VSCode [link](https://marketplace.visualstudio.com/items?itemName=pomdtr.excalidraw-editor)
     - download excalidraw assets from [assets/README.md](assets/README.md) and add them to your excalidraw library for use in diagrams.
     - after downloading assets, you can import them into excalidraw by going to the library tab and importing the downloaded .excalidrawlib files.
+
+- [mdbook](https://rust-lang.github.io/mdBook/guide/installation.html)
+    - install mdbook using cargo: `cargo install mdbook`
+    - run the book locally: `mdbook serve`
+    - build the book for deployment: `mdbook build`
