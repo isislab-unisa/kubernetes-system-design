@@ -1,0 +1,29 @@
+name: Excalirender
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'diagrams/**'
+
+jobs:
+  excalirender:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install excalirender
+        run: curl -fsSL https://raw.githubusercontent.com/JonRC/excalirender/main/install.sh | sh
+
+      - name: Run excalirender
+        run: excalirender -r ./diagrams --transparent --dark -s 2 -o ./diagrams/exports
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add ./diagrams/exports
+          git commit -m "Update excalidraw exports" || echo "No changes to commit"
+          git push origin main
