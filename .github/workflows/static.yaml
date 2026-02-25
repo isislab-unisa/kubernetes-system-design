@@ -1,20 +1,19 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+# Workflow for converting diagrams and deploying static content to GitHub Pages
+name: Build and Deploy
 
 on:
-  # Runs after converter.yaml workflow completes
-  workflow_run:
-    workflows: ["converter"]
-    types:
-      - completed
-    branches: ["main"]
+  push:
+    branches:
+      - main
+    paths:
+      - 'kubook/**'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -25,8 +24,44 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Single deploy job since we're just deploying
+  # Convert Excalidraw diagrams to images if diagrams changed
+  converter:
+    runs-on: ubuntu-latest
+    outputs:
+      diagrams-changed: ${{ steps.check-changes.outputs.diagrams-changed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for diagram changes
+        id: check-changes
+        run: |
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q 'kubook/src/diagrams/'; then
+            echo "diagrams-changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "diagrams-changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install excalirender
+        if: steps.check-changes.outputs.diagrams-changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: curl -fsSL https://raw.githubusercontent.com/JonRC/excalirender/main/install.sh | sh
+
+      - name: Run excalirender
+        if: steps.check-changes.outputs.diagrams-changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: excalirender -r ./kubook/src/diagrams --transparent --dark -s 2 -o ./kubook/src/images
+
+      - name: Commit and push changes
+        if: steps.check-changes.outputs.diagrams-changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f ./kubook/src/images
+          git commit -m "Update excalidraw exports" || echo "No changes to commit"
+          git push origin main
+
+  # Build and deploy to GitHub Pages
   deploy:
+    needs: converter
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -34,18 +69,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Build with mdBook
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           cargo install mdbook
           mdbook test kubook
           mdbook build kubook
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'kubook/book'
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
