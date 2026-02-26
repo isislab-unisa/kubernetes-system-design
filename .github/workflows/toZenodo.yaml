@@ -1,0 +1,73 @@
+name: Release on Zenodo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-release-and-upload:
+    runs-on: ubuntu-latest
+    name: Build PDF, create GitHub release, and upload to Zenodo
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Build with mdBook
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
+          cargo install mdbook
+          mdbook build kubook
+
+      - name: Install wkhtmltopdf
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wkhtmltopdf
+
+      - name: Convert print.html to PDF
+        run: |
+          wkhtmltopdf kubook/book/print.html kubook/book/kubernetes-system-design.pdf
+
+      - name: Get current date for release tag
+        id: date
+        run: echo "date=$(date +'%Y.%m.%d-%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.date.outputs.date }}
+          release_name: Release ${{ steps.date.outputs.date }}
+          draft: false
+          prerelease: false
+
+      - name: Upload PDF to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: kubook/book/kubernetes-system-design.pdf
+          asset_name: kubernetes-system-design.pdf
+          asset_content_type: application/pdf
+
+      - name: Upload to Zenodo
+        id: zenodo
+        uses: megasanjay/upload-to-zenodo@v2.0.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          zenodo_token: ${{ secrets.ZENODO_TOKEN }}
+          zenodo_deposition_id: 18786215
+          zenodo_publish: false
+          zenodo_sandbox: false
+          commit_message: 'chore: update ${file_name} for Zenodo release'
+
+      - name: Get the output doi
+        run: echo "The released doi was ${{ steps.zenodo.outputs.doi }}"
