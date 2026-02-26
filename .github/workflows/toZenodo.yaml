@@ -17,10 +17,11 @@ jobs:
         with:
           node-version: 16
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Build with mdBook
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source "$HOME/.cargo/env"
           cargo install mdbook
           mdbook build kubook
 
@@ -58,16 +59,15 @@ jobs:
           asset_name: kubernetes-system-design.pdf
           asset_content_type: application/pdf
 
-      - name: Upload to Zenodo
-        id: zenodo
-        uses: megasanjay/upload-to-zenodo@v2.0.1
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          zenodo_token: ${{ secrets.ZENODO_TOKEN }}
-          zenodo_deposition_id: 18786215
-          zenodo_publish: false
-          zenodo_sandbox: false
-          commit_message: 'chore: update ${file_name} for Zenodo release'
+          python-version: '3.11'
 
-      - name: Get the output doi
-        run: echo "The released doi was ${{ steps.zenodo.outputs.doi }}"
+      - name: Install Python dependencies
+        run: pip install requests
+
+      - name: Upload PDF to Zenodo
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: python utils/upload_to_zenodo_action.py --pdf kubook/book/kubernetes-system-design.pdf --deposition-id 18786215

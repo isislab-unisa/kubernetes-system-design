@@ -11,3 +11,6 @@ tmp
 .vscode
 .zed
 **/images/*.png
+.env
+/utils/**
+!/utils/*.py
