@@ -13,9 +13,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -38,31 +38,19 @@ jobs:
         id: date
         run: echo "date=$(date +'%Y.%m.%d-%H%M%S')" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release and upload PDF
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.date.outputs.date }}
-          release_name: Release ${{ steps.date.outputs.date }}
+          name: Release ${{ steps.date.outputs.date }}
+          files: kubook/book/kubernetes-system-design.pdf
           draft: false
           prerelease: false
 
-      - name: Upload PDF to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: kubook/book/kubernetes-system-design.pdf
-          asset_name: kubernetes-system-design.pdf
-          asset_content_type: application/pdf
-
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install Python dependencies
         run: pip install requests

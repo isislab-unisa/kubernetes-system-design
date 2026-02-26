@@ -1,3 +1,4 @@
+# https://developers.zenodo.org/#quickstart-upload
 import requests
 import load_dotenv
 import os
@@ -44,4 +45,12 @@ else:
     print(r.json())
     sys.exit(1)
 
-print(f"View your deposition at: https://zenodo.org/deposit/{DEPOSITION_ID}")
+
+r = requests.post('https://zenodo.org/api/deposit/depositions/%s/actions/publish' % DEPOSITION_ID,
+                      headers=headers)
+
+if r.status_code == 202:
+    print("Deposition published successfully!")
+else:
+    print(f"Failed to publish deposition: {r.status_code}")
+    print(r.json())

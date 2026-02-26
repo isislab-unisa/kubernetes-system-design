@@ -58,6 +58,16 @@ def upload_to_zenodo(pdf_path, access_token, deposition_id):
         return False
 
     print(f"View your deposition at: https://zenodo.org/deposit/{deposition_id}")
+
+    r = requests.post('https://zenodo.org/api/deposit/depositions/%s/actions/publish' % deposition_id,
+                      headers=headers)
+
+    if r.status_code == 202:
+        print("Deposition published successfully!")
+    else:
+        print(f"Failed to publish deposition: {r.status_code}")
+        print(r.json())
+
     return True
 
 
@@ -83,7 +93,7 @@ def main():
     # Get access token from environment
     access_token = os.getenv('ZENODO_TOKEN')
     if not access_token:
-        print("❌ Error: ZENODO_TOKEN environment variable not set")
+        print("Error: ZENODO_TOKEN environment variable not set")
         print("Please set it in GitHub Secrets and pass it to the action")
         sys.exit(1)
 
