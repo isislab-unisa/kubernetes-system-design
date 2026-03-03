@@ -12,4 +12,5 @@
 - [mdbook](https://rust-lang.github.io/mdBook/guide/installation.html)
     - install mdbook using cargo: `cargo install mdbook`
     - run the book locally: `mdbook serve`
+    - run then book locally with live reload: `mdbook serve --watcher native`
     - build the book for deployment: `mdbook build`
