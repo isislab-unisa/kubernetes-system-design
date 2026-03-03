@@ -1,4 +1,5 @@
 # Summary
 
-- [Introduction](./intro.md)
-- [Chapter 1](./chapter_1.md)
+- [Introduction](intro.md)
+- [Structure of tasks](structure-of-tasks.md)
+- [Single-container deployment](single-container-deployment.md)
