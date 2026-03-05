@@ -27,6 +27,46 @@ kubectl create deployment hello-dashboard \
     --port=8080
 ```
 
+To inspect the YAML that would be applied without actually creating the resource, use the `--dry-run=client -o yaml` flags:
+
+```bash
+kubectl create deployment hello-dashboard \
+    --image=paulbouwer/hello-kubernetes:1.10 \
+    --port=8080 \
+    --dry-run=client -o yaml
+```
+
+The output should look similar to this:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: hello-dashboard
+  name: hello-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-dashboard
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: hello-dashboard
+    spec:
+      containers:
+      - image: paulbouwer/hello-kubernetes:1.10
+        name: hello-kubernetes
+        ports:
+        - containerPort: 8080
+        resources: {}
+status: {}
+```
+
 Next, we expose the Deployment as a ClusterIP Service. ClusterIP is the right choice here because it gives other services inside the cluster a stable address for reaching the dashboard while keeping it inaccessible from outside.
 
 We use `kubectl expose` instead of creating the Service manually with `kubectl create service clusterip` because it automatically sets the selector to match the Deployment Pods, which is exactly the wiring we need. The Service listens on port `80` and forwards traffic to the container port `8080`.
