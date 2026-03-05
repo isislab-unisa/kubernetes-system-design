@@ -26,6 +26,47 @@ kubectl create deployment nginx-resilient \
     --replicas=3
 ```
 
+To inspect the YAML that would be applied without actually creating the resource, use the `--dry-run=client -o yaml` flags:
+
+```bash
+kubectl create deployment nginx-resilient \
+    --image=nginx:1.27 \
+    --port=80 \
+    --replicas=3 \
+    --dry-run=client -o yaml
+```
+
+The output should look similar to this:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: nginx-resilient
+  name: nginx-resilient
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx-resilient
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: nginx-resilient
+    spec:
+      containers:
+      - image: nginx:1.27
+        name: nginx
+        ports:
+        - containerPort: 80
+        resources: {}
+status: {}
+```
+
 Next, we expose the Deployment as a ClusterIP Service. The Service gives other cluster workloads a single stable address that load-balances across all three Pod replicas, so callers are unaffected by individual Pod restarts or rescheduling.
 
 ```bash
