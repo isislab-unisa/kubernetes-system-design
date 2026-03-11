@@ -6,7 +6,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque laoreet to
 
 ## Tools
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec et tempor velit. Suspendisse elit massa, fringilla nec tempus quis, dictum eget orci. Sed tincidunt ultrices aliquet. Pellentesque sagittis sagittis massa, ut imperdiet elit vehicula id. Suspendisse in dui eros. In fringilla sed mi eget facilisis. Ut condimentum auctor lacus, vitae scelerisque orci dignissim vel. Aliquam at purus nec diam cursus vehicula a sed erat. Suspendisse efficitur velit at magna pretium, eget varius nisi feugiat. Donec sed dui eros. Aliquam ut sapien accumsan, cursus ligula eget, auctor elit. Maecenas pretium enim at elit blandit cursus. Integer quis urna non dui venenatis porttitor viverra vitae dolor. Maecenas lacus sapien, luctus venenatis ex vitae, eleifend facilisis justo. Vivamus dictum leo at urna malesuada, vitae commodo dolor lacinia.
+You can access the playground for this course at [killercoda](https://killercoda.com/isislab/scenario/exam-playground).
 
 ## How to contribute via GitHub
 
