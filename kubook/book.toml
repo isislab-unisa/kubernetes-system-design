@@ -2,3 +2,6 @@
 title = "kubook"
 authors = ["ddevin96"]
 language = "en"
+
+[preprocessor.subsection-numbering]
+command = "cargo run --manifest-path=../enumeration/Cargo.toml --locked"
