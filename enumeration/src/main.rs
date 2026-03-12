@@ -60,41 +60,56 @@ fn process_book_items(items: &mut Vec<BookItem>, chapter_num: &mut usize) {
 fn add_subsection_numbers(chapter: &mut Chapter, chapter_num: usize) {
     let lines: Vec<&str> = chapter.content.lines().collect();
     let mut result = String::new();
-    let mut subsection_num = 0;
+    let mut h2_num = 0;
+    let mut h3_num = 0;
+    let mut h4_num = 0;
 
     for line in lines {
         let trimmed = line.trim_start();
 
+        // Check for H1 headers (#)
+        if trimmed.starts_with("# ") && !trimmed.starts_with("## ") {
+            let heading_text = trimmed.trim_start_matches("# ").trim();
+            // Check if already numbered
+            if !heading_text.chars().next().map_or(false, |c| c.is_digit(10)) {
+                let indent = &line[..line.len() - trimmed.len()];
+                result.push_str(&format!("{}# {} {}\n", indent, chapter_num, heading_text));
+                continue;
+            }
+        }
         // Check for H2 headers (##)
-        if trimmed.starts_with("## ") && !trimmed.starts_with("### ") {
-            subsection_num += 1;
+        else if trimmed.starts_with("## ") && !trimmed.starts_with("### ") {
+            h2_num += 1;
+            h3_num = 0; // Reset H3 counter
+            h4_num = 0; // Reset H4 counter
             let heading_text = trimmed.trim_start_matches("## ").trim();
             // Check if already numbered
             if !heading_text.chars().next().map_or(false, |c| c.is_digit(10)) {
                 let indent = &line[..line.len() - trimmed.len()];
-                result.push_str(&format!("{}## {}.{} {}\n", indent, chapter_num, subsection_num, heading_text));
+                result.push_str(&format!("{}## {}.{} {}\n", indent, chapter_num, h2_num, heading_text));
                 continue;
             }
         }
         // Check for H3 headers (###)
         else if trimmed.starts_with("### ") && !trimmed.starts_with("#### ") {
-            subsection_num += 1;
+            h3_num += 1;
+            h4_num = 0; // Reset H4 counter
             let heading_text = trimmed.trim_start_matches("### ").trim();
             // Check if already numbered
             if !heading_text.chars().next().map_or(false, |c| c.is_digit(10)) {
                 let indent = &line[..line.len() - trimmed.len()];
-                result.push_str(&format!("{}### {}.{} {}\n", indent, chapter_num, subsection_num, heading_text));
+                result.push_str(&format!("{}### {}.{}.{} {}\n", indent, chapter_num, h2_num, h3_num, heading_text));
                 continue;
             }
         }
         // Check for H4 headers (####)
         else if trimmed.starts_with("#### ") && !trimmed.starts_with("##### ") {
-            subsection_num += 1;
+            h4_num += 1;
             let heading_text = trimmed.trim_start_matches("#### ").trim();
             // Check if already numbered
             if !heading_text.chars().next().map_or(false, |c| c.is_digit(10)) {
                 let indent = &line[..line.len() - trimmed.len()];
-                result.push_str(&format!("{}#### {}.{} {}\n", indent, chapter_num, subsection_num, heading_text));
+                result.push_str(&format!("{}#### {}.{}.{}.{} {}\n", indent, chapter_num, h2_num, h3_num, h4_num, heading_text));
                 continue;
             }
         }

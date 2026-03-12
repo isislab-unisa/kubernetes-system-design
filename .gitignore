@@ -14,5 +14,3 @@ tmp
 .env
 /utils/**
 !/utils/*.py
-
-Cargo.lock
