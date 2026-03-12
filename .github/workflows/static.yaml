@@ -31,7 +31,7 @@ jobs:
       diagrams-changed: ${{ steps.check-changes.outputs.diagrams-changed }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install excalirender
         run: curl -fsSL https://raw.githubusercontent.com/JonRC/excalirender/main/install.sh | sh
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
 

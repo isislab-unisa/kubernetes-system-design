@@ -14,6 +14,7 @@
     - run the book locally: `mdbook serve`
     - run then book locally with live reload: `mdbook serve --watcher native`
     - build the book for deployment: `mdbook build`
+    - mdbook will use preprocessor contained in the `preprocessor.subsection-numbering` section of `book.toml` to automatically number sections and subsections. The preprocessor is implemented in Rust and can be found in the `enumeration` directory. To build the preprocessor, run `cargo build --release --manifest-path=../enumeration/Cargo.toml --locked`. The preprocessor will be automatically run by mdbook when building the book.
 
 ## Playground
 
