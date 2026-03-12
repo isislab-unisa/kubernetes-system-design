@@ -4,4 +4,4 @@ authors = ["ddevin96"]
 language = "en"
 
 [preprocessor.subsection-numbering]
-command = "cargo run --manifest-path=../enumeration/Cargo.toml --locked"
+command = "cargo run --release --manifest-path=../enumeration/Cargo.toml --locked"
