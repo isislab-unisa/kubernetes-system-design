@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'kubook/**'
+      - "kubook/**"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -34,6 +34,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check for diagram changes
+        if: github.event_name != 'workflow_dispatch'
         id: check-changes
         run: |
           if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q 'kubook/src/diagrams/'; then
@@ -48,7 +49,7 @@ jobs:
 
       - name: Run excalirender
         if: steps.check-changes.outputs.diagrams-changed == 'true' || github.event_name == 'workflow_dispatch'
-        run: excalirender -r ./kubook/src/diagrams --transparent --dark -s 2 -o ./kubook/src/images
+        run: excalirender -r ./kubook/src/diagrams --transparent -s 2 -o ./kubook/src/images
 
       - name: Commit and push changes
         if: steps.check-changes.outputs.diagrams-changed == 'true' || github.event_name == 'workflow_dispatch'
@@ -87,7 +88,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'kubook/book'
+          path: "kubook/book"
 
       - name: Deploy to GitHub Pages
         id: deployment
