@@ -17,6 +17,18 @@ However, other services inside the cluster need a stable address to reach it, so
 
 ### Architectural design
 
+The task requires a single container image, brief downtime is acceptable, and the dashboard must be reachable only from inside the cluster. These constraints drive three design decisions:
+
+1. Because the application is a single container, a Deployment with one replica is enough. The Deployment creates a ReplicaSet that manages the Pod. If the Pod crashes, the ReplicaSet recreates it automatically at the cost of a short period of unavailability, which the task explicitly allows.
+
+2. Other services need a stable address to reach the dashboard. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`hello-dashboard-svc`) in front of the Pod. The Service provides a fixed cluster-internal DNS name and load-balances traffic to the Pod. It accepts requests on port `80` and forwards them to the container's port `8080`.
+
+3. The dashboard must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
+
+![Architecture diagram](images/single-container-deployment.png)
+
+The diagram shows the resulting architecture: external clients have no path into the application, while internal services reach the dashboard through the ClusterIP Service, which forwards traffic into the Pod managed by the Deployment.
+
 ### Implementation
 
 We start by creating a Deployment with a single replica (the default). The task allows short periods of unavailability, so one instance is enough. We use the `paulbouwer/hello-kubernetes:1.10` image and declare that the container listens on port `8080`. The `kubectl create deployment` command automatically adds the label `app=hello-dashboard` to the Pods, which will be useful later when we create the Service.
