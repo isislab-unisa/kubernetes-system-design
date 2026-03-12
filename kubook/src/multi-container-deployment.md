@@ -18,6 +18,20 @@ The web server must be reachable from other services inside the cluster through 
 
 ### Architectural design
 
+The task requires two containers that share log data, brief downtime is acceptable, and the web server must be reachable only from inside the cluster. These constraints drive four design decisions:
+
+1. A single Deployment with one replica is enough because the application needs two containers in the same Pod, the nginx web server and the busybox logging sidecar. The Deployment creates a ReplicaSet that manages the Pod. If the Pod crashes, the ReplicaSet recreates it automatically at the cost of a short period of unavailability, which the task explicitly allows.
+
+2. The sidecar needs access to nginx's access logs without execing into the nginx container. A volume mounted at `/var/log/nginx` location in both containers solves this: nginx writes its access log to the shared volume, and the sidecar continuously reads it with `tail -f`, streaming entries to its own standard output. This keeps the two containers decoupled: each has a single responsibility and the shared volume acts as the data bridge between them.
+
+3. Other services need a stable address to reach the web server. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`nginx-sidecar-svc`) in front of the Pod. The Service provides a fixed cluster-internal DNS name and forwards traffic to the nginx container on port `80`.
+
+4. The web server must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
+
+![Architecture diagram](images/multi-container-deployment.png)
+
+The diagram shows the resulting architecture: external clients have no path into the application, while internal services reach the web server through the ClusterIP Service, which forwards traffic into the Pod managed by the Deployment. Inside the Pod, the nginx container serves requests and writes access logs to a shared volume, which the logging sidecar reads and streams to standard output.
+
 ### Implementation
 
 Unlike single-container Pods, multi-container Pods cannot be created with `kubectl create deployment` alone. We need a YAML manifest to define both containers and the shared volume within the same Pod.
