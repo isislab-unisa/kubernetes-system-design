@@ -60,5 +60,13 @@ This starts an interactive shell inside a Busybox container. From there, you can
 
 ## How to contribute via GitHub
 
-You can follow the instructions in the [CONTRIBUTING.md](CONTRIBUTING.md) file to contribute to this project via GitHub.
 We welcome contributions of all kinds, including bug fixes, improvements to the content, and suggestions for new exercises or topics to cover.
+
+### Contribute to code
+You can follow the instructions in the [CONTRIBUTING.md](CONTRIBUTING.md) file to contribute to this project via GitHub.
+
+### Contribute to content
+To add a new exercise or topic, you can create a new Markdown file in the `src` directory and add it to the `SUMMARY.md` file to include it in the book's structure.
+Chapter, section and subsection numbering is handled automatically by the preprocessor defined in `book.toml`, mapping `#` to `1.`, `##` to `1.1.`, and `###` to `1.1.1.`.
+You have also to use Excalidraw to draw your diagrams and include the source `.excalidraw` files in the `src/diagrams` directory.
+The automatic build process will export the diagrams as PNG images and place them in the `src/diagrams_images` directory, which you can reference in your Markdown files.

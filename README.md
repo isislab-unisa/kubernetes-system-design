@@ -1,5 +1,7 @@
 ## Book for Kubernetes System Design
 
+This book originated as an introduction to Kubernetes system design for Unisa students, but it is freely available for anyone interested in learning how to design Kubernetes architectures.
+
 ## Prerequisites
 
 - [prek](https://github.com/j178/prek?tab=readme-ov-file) (pre-commit hook manager)
@@ -19,3 +21,8 @@
 ## Playground
 
 You can access a Kubernetes playground where you can experiment with tasks at [killercoda](https://killercoda.com/isislab/scenario/exam-playground).
+
+## Contributing
+
+You can contribute to this project by submitting pull requests on GitHub. We welcome contributions of all kinds, including bug fixes, improvements to the content, and suggestions for new exercises or topics to cover.
+You can find more detailed instructions on how to contribute in the [CONTRIBUTING.md](CONTRIBUTING.md) file.
