@@ -1,7 +1,10 @@
 [book]
 title = "kubook"
-authors = ["ddevin96"]
+authors = ["Tiziano Citro", "Daniele De Vinco", "Vittorio Scarano"]
 language = "en"
+
+[output.html]
+additional-js = ["src/add-toc.js"]
 
 [preprocessor.subsection-numbering]
 command = "cargo run --release --manifest-path=../enumeration/Cargo.toml --locked"
