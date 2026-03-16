@@ -22,9 +22,12 @@ As an example, here is the architecture diagram for a Deployment exposed through
 
 #### How to install Kubernetes icons in Excalidraw
 
-On your local editor, open a .excalidraw file, click on the right panel and click Open. Then, select the `.excalidrawlib` file you want to import. The library will be added to your list of assets, and you can start using the icons in your diagrams.
-We used this available [asset](https://libraries.excalidraw.com/libraries/boemska-nik/kubernetes-icons.excalidrawlib) for our diagrams, but feel free to explore other libraries or create your own!
-You see in the image below how we imported the Kubernetes icons library in Excalidraw in VSCode, but the process is the same in the browser version.
+In your local editor, open any `.excalidraw` file, then click **Open** in the right panel and select the `.excalidrawlib` file you want to import. The library will be added to your asset list, and you can start using the icons in your diagrams right away.
+
+We used the [Kubernetes Icons](https://libraries.excalidraw.com/libraries/boemska-nik/kubernetes-icons.excalidrawlib) library for our diagrams, but feel free to explore other libraries or create your own!
+
+The image below shows the import process in VS Code, but the steps are identical in the browser.
+
 [![Importing Kubernetes icons library in Excalidraw in VSCode](images/tutorial_asset.png)](images/tutorial_asset.png)
 
 ### Killercoda
@@ -33,14 +36,16 @@ The best way to learn the tools used in this course is to use them hands-on in a
 
 > Killercoda is a platform for learning and practicing skills in a safe and interactive environment. It provides hands-on experience with real-world tools and techniques, allowing users to develop their skills and knowledge in a practical way.
 
-Killercoda offers a wide range of scenarios for various topics and skill levels. For this course specifically, we created a custom playground that includes all the tools and resources needed to complete the exercises. You can access it at [https://killercoda.com/isislab/scenario/exam-playground](https://killercoda.com/isislab/scenario/exam-playground).
+Killercoda offers a wide range of scenarios for various topics and skill levels. For this course specifically, we created a custom playground that includes all the tools and resources needed to complete the tasks. You can access it at [https://killercoda.com/isislab/scenario/exam-playground](https://killercoda.com/isislab/scenario/exam-playground).
 
 #### How to use the Killercoda playground
 
-You go to (https://killercoda.com/isislab/scenario/exam-playground). In the background, a script will set up a Kubernetes cluster and deploy the necessary resources for the exam.
-This will create a personal instance of the playground for you, which includes a Kubernetes cluster and a terminal with all the necessary tools pre-installed.
+Navigate to [https://killercoda.com/isislab/scenario/exam-playground](https://killercoda.com/isislab/scenario/exam-playground) and start the scenario. This will provision a Kubernetes cluster and deploy all the resources needed for the tasks.
+
 [![Killercoda scenario start](images/tutorial_killercoda_1.png)](images/tutorial_killercoda_1.png)
-You can use this terminal to run `kubectl` commands and interact with the cluster as you work through the exam.
+
+Once the setup completes, you will have a personal playground instance with a running Kubernetes cluster and a terminal with all the necessary tools pre-installed. Use this terminal to run `kubectl` commands and interact with the cluster as you work through the tasks.
+
 [![Killercoda playground terminal](images/tutorial_killercoda_2.png)](images/tutorial_killercoda_2.png)
 
 ### Busybox
@@ -59,13 +64,18 @@ This starts an interactive shell inside a Busybox container. From there, you can
 
 ## How to contribute via GitHub
 
-We welcome contributions of all kinds, including bug fixes, improvements to the content, and suggestions for new exercises or topics to cover.
+We welcome all kinds of contributions: bug fixes, content improvements, and suggestions for new exercises or topics. The project is fully hosted on [GitHub](https://github.com/isislab-unisa/kubernetessystemdesign). See [CONTRIBUTING.md](https://github.com/isislab-unisa/kubernetessystemdesign/blob/main/CONTRIBUTING.md) for setup instructions and the contribution workflow.
 
-### Contribute to code
-You can follow the instructions in the [CONTRIBUTING.md](CONTRIBUTING.md) file to contribute to this project via GitHub.
+### Adding a new topic
 
-### Contribute to content
-To add a new exercise or topic, you can create a new Markdown file in the `src` directory and add it to the `SUMMARY.md` file to include it in the book's structure.
-Chapter, section and subsection numbering is handled automatically by the preprocessor defined in `book.toml`, mapping `#` to `1.`, `##` to `1.1.`, and `###` to `1.1.1.`.
-You have also to use Excalidraw to draw your diagrams and include the source `.excalidraw` files in the `src/diagrams` directory.
-The automatic build process will export the diagrams as PNG images and place them in the `src/diagrams_images` directory, which you can reference in your Markdown files.
+Create a Markdown file in the `src` directory and add an entry for it in `SUMMARY.md`.
+
+Chapter, section, and subsection numbering is handled automatically by the preprocessor in `book.toml`. For example, `#` maps to `1.`, `##` to `1.1.`, and `###` to `1.1.1.`.
+
+### Adding a task to an existing topic
+
+Add a new section at the appropriate heading level and follow the format of the existing tasks in that file.
+
+### Adding diagrams
+
+Draw your diagram in Excalidraw and place the source `.excalidraw` file in `src/diagrams`. The build process will export it as a PNG to `src/diagrams_images`, which you can then reference in your Markdown file.
