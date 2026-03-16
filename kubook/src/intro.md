@@ -37,12 +37,11 @@ Killercoda offers a wide range of scenarios for various topics and skill levels.
 
 #### How to use the Killercoda playground
 
-You go to (https://killercoda.com/isislab/scenario/exam-playground) and click on "Start Scenario".
-[![Killercoda scenario start](images/tutorial_killercoda_1.png)](images/tutorial_killercoda_1.png)
+You go to (https://killercoda.com/isislab/scenario/exam-playground). In the background, a script will set up a Kubernetes cluster and deploy the necessary resources for the exam.
 This will create a personal instance of the playground for you, which includes a Kubernetes cluster and a terminal with all the necessary tools pre-installed.
+[![Killercoda scenario start](images/tutorial_killercoda_1.png)](images/tutorial_killercoda_1.png)
+You can use this terminal to run `kubectl` commands and interact with the cluster as you work through the exam.
 [![Killercoda playground terminal](images/tutorial_killercoda_2.png)](images/tutorial_killercoda_2.png)
-You can use this terminal to run `kubectl` commands and interact with the cluster as you work through the exercises in this course.
-[![Killercoda playground terminal](images/tutorial_killercoda_3.png)](images/tutorial_killercoda_3.png)
 
 ### Busybox
 
