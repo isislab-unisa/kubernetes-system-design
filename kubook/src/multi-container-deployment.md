@@ -28,7 +28,7 @@ The task requires two containers that share log data, brief downtime is acceptab
 
 4. The web server must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
 
-![Architecture diagram](images/multi-container-deployment.png)
+![Architecture diagram](diagrams_images/multi-container-deployment.png)
 
 The diagram shows the resulting architecture: external clients have no path into the application, while internal services reach the web server through the ClusterIP Service, which forwards traffic into the Pod managed by the Deployment. Inside the Pod, the nginx container serves requests and writes access logs to a shared volume, which the logging sidecar reads and streams to standard output.
 

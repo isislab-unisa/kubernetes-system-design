@@ -18,15 +18,14 @@ We use Excalidraw to design and visualize Kubernetes architectures before implem
 
 As an example, here is the architecture diagram for a Deployment exposed through a ClusterIP Service, reachable only from inside the cluster:
 
-![Single-container deployment](images/single-container-deployment.png)
+![Single-container deployment](diagrams_images/single-container-deployment.png)
 
-#### How to install Kubernetes icons in Excalidraw in the browser
+#### How to install Kubernetes icons in Excalidraw
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur commodo bibendum mauris, a sagittis dolor. Nulla vestibulum elit ac turpis dictum, at aliquet eros tincidunt. Mauris molestie nulla eu ligula consectetur finibus. Maecenas ut mauris id eros tristique dapibus. Interdum et malesuada fames ac ante ipsum primis in faucibus. Aliquam ornare tempor ex, nec semper lorem sagittis ac. Aenean ex metus, tempor at tincidunt eget, ultrices nec turpis. Maecenas tempus molestie urna non suscipit. Suspendisse molestie nunc condimentum porta accumsan. Morbi hendrerit dui id dui interdum, sed finibus sem imperdiet. Praesent lacinia urna ut magna ornare varius. In dapibus elit semper nibh facilisis consectetur. Phasellus feugiat laoreet est vitae interdum. Phasellus enim magna, gravida in purus vitae, tempor laoreet massa. Nulla vitae placerat dui.
-
-#### How to install Kubernetes icons in Excalidraw in VS Code
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur commodo bibendum mauris, a sagittis dolor. Nulla vestibulum elit ac turpis dictum, at aliquet eros tincidunt. Mauris molestie nulla eu ligula consectetur finibus. Maecenas ut mauris id eros tristique dapibus. Interdum et malesuada fames ac ante ipsum primis in faucibus. Aliquam ornare tempor ex, nec semper lorem sagittis ac. Aenean ex metus, tempor at tincidunt eget, ultrices nec turpis. Maecenas tempus molestie urna non suscipit. Suspendisse molestie nunc condimentum porta accumsan. Morbi hendrerit dui id dui interdum, sed finibus sem imperdiet. Praesent lacinia urna ut magna ornare varius. In dapibus elit semper nibh facilisis consectetur. Phasellus feugiat laoreet est vitae interdum. Phasellus enim magna, gravida in purus vitae, tempor laoreet massa. Nulla vitae placerat dui.
+On your local editor, open a .excalidraw file, click on the right panel and click Open. Then, select the `.excalidrawlib` file you want to import. The library will be added to your list of assets, and you can start using the icons in your diagrams.
+We used this available [asset](https://libraries.excalidraw.com/libraries/boemska-nik/kubernetes-icons.excalidrawlib) for our diagrams, but feel free to explore other libraries or create your own!
+You see in the image below how we imported the Kubernetes icons library in Excalidraw in VSCode, but the process is the same in the browser version.
+[![Importing Kubernetes icons library in Excalidraw in VSCode](images/tutorial_asset.png)](images/tutorial_asset.png)
 
 ### Killercoda
 
@@ -38,7 +37,12 @@ Killercoda offers a wide range of scenarios for various topics and skill levels.
 
 #### How to use the Killercoda playground
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur commodo bibendum mauris, a sagittis dolor. Nulla vestibulum elit ac turpis dictum, at aliquet eros tincidunt. Mauris molestie nulla eu ligula consectetur finibus. Maecenas ut mauris id eros tristique dapibus. Interdum et malesuada fames ac ante ipsum primis in faucibus. Aliquam ornare tempor ex, nec semper lorem sagittis ac. Aenean ex metus, tempor at tincidunt eget, ultrices nec turpis. Maecenas tempus molestie urna non suscipit. Suspendisse molestie nunc condimentum porta accumsan. Morbi hendrerit dui id dui interdum, sed finibus sem imperdiet. Praesent lacinia urna ut magna ornare varius. In dapibus elit semper nibh facilisis consectetur. Phasellus feugiat laoreet est vitae interdum. Phasellus enim magna, gravida in purus vitae, tempor laoreet massa. Nulla vitae placerat dui.
+You go to (https://killercoda.com/isislab/scenario/exam-playground) and click on "Start Scenario".
+[![Killercoda scenario start](images/tutorial_killercoda_1.png)](images/tutorial_killercoda_1.png)
+This will create a personal instance of the playground for you, which includes a Kubernetes cluster and a terminal with all the necessary tools pre-installed.
+[![Killercoda playground terminal](images/tutorial_killercoda_2.png)](images/tutorial_killercoda_2.png)
+You can use this terminal to run `kubectl` commands and interact with the cluster as you work through the exercises in this course.
+[![Killercoda playground terminal](images/tutorial_killercoda_3.png)](images/tutorial_killercoda_3.png)
 
 ### Busybox
 
@@ -56,4 +60,5 @@ This starts an interactive shell inside a Busybox container. From there, you can
 
 ## How to contribute via GitHub
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur commodo bibendum mauris, a sagittis dolor. Nulla vestibulum elit ac turpis dictum, at aliquet eros tincidunt. Mauris molestie nulla eu ligula consectetur finibus. Maecenas ut mauris id eros tristique dapibus. Interdum et malesuada fames ac ante ipsum primis in faucibus. Aliquam ornare tempor ex, nec semper lorem sagittis ac. Aenean ex metus, tempor at tincidunt eget, ultrices nec turpis. Maecenas tempus molestie urna non suscipit. Suspendisse molestie nunc condimentum porta accumsan. Morbi hendrerit dui id dui interdum, sed finibus sem imperdiet. Praesent lacinia urna ut magna ornare varius. In dapibus elit semper nibh facilisis consectetur. Phasellus feugiat laoreet est vitae interdum. Phasellus enim magna, gravida in purus vitae, tempor laoreet massa. Nulla vitae placerat dui.
+You can follow the instructions in the [CONTRIBUTING.md](CONTRIBUTING.md) file to contribute to this project via GitHub.
+We welcome contributions of all kinds, including bug fixes, improvements to the content, and suggestions for new exercises or topics to cover.

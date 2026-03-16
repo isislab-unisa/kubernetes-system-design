@@ -28,7 +28,7 @@ The task requires running the same application in two isolated environments, bri
 
 4. The application must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
 
-![Architecture diagram](images/namespace-isolated-deployment.png)
+![Architecture diagram](diagrams_images/namespace-isolated-deployment.png)
 
 The diagram shows the resulting architecture: the `staging` and `production` Namespaces each contain an independent Deployment and ClusterIP Service with the same names. External clients have no path into either environment, while internal services reach the web application through the ClusterIP Service in their own Namespace. Cross-namespace access is possible only via the fully qualified DNS name (`web-app-svc.<namespace>.svc.cluster.local`), since short Service names resolve only within the same Namespace.
 

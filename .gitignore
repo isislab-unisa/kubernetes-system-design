@@ -10,7 +10,7 @@ tmp
 .nova
 .vscode
 .zed
-**/images/*.png
+**/diagrams_images/*.png
 .env
 /utils/**
 !/utils/*.py

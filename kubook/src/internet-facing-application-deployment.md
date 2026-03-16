@@ -113,7 +113,7 @@ The task requires two independent applications reachable from outside the cluste
 
 4. An HTTPRoute resource (`app-routes`) binds to the Gateway and defines the path-based routing rules. Requests to `/dashboard` are forwarded to `dashboard-svc`, and requests to `/admin` are forwarded to `admin-svc`. A URL rewrite filter strips the path prefix before the request reaches the backend, so each application receives traffic at `/` regardless of the original path.
 
-![Architecture diagram](images/internet-facing-application-deployment.png)
+![Architecture diagram](diagrams_images/internet-facing-application-deployment.png)
 
 The diagram shows the resulting architecture: external clients send HTTP requests to the Gateway, which is the only component with an externally accessible port. The HTTPRoute inspects the request path and forwards traffic to the correct ClusterIP Service, which in turn reaches the Pod managed by the corresponding Deployment. The two application Services have no external route, so they are unreachable from outside the cluster without the Gateway.
 

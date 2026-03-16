@@ -23,7 +23,7 @@ The task requires an internal web server that stays available across Pod failure
 
 3. The web server must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
 
-![Architecture diagram](images/resilient-application-deployment.png)
+![Architecture diagram](diagrams_images/resilient-application-deployment.png)
 
 The diagram shows the resulting architecture: external clients have no path into the application, while internal services reach the web server through the ClusterIP Service, which load-balances traffic across the three Pod replicas managed by the Deployment's ReplicaSet.
 
