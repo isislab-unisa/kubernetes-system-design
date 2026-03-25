@@ -161,3 +161,143 @@ The dashboard HTML should look similar to the example below:
     </body>
 </html>
 ```
+
+## Task 2: Design and deploy an internal request inspector
+
+Your team needs an internal debugging tool that runs inside the cluster and displays HTTP request details such as headers, source IP, and hostname. This helps developers verify how traffic flows through the cluster.
+
+The tool must be packaged as a single container image ([traefik/whoami](https://hub.docker.com/r/traefik/whoami)). It does not need to be highly resilient, since brief periods of unavailability are acceptable.
+
+However, other services inside the cluster need a stable address to reach it, so Pod IPs alone are not enough. Make sure the tool is strictly for internal use and not accessible from outside the cluster.
+
+### Architectural design
+
+The task requires a single container image, brief downtime is acceptable, and the request inspector must be reachable only from inside the cluster. These constraints drive three design decisions:
+
+1. Because the application is a single container, a Deployment with one replica is enough. The Deployment creates a ReplicaSet that manages the Pod. If the Pod crashes, the ReplicaSet recreates it automatically at the cost of a short period of unavailability, which the task explicitly allows.
+
+2. Other services need a stable address to reach the request inspector. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`whoami-inspector-svc`) in front of the Pod. The Service provides a fixed cluster-internal DNS name and load-balances traffic to the Pod. It accepts requests on port `8080` and forwards them to the container's port `80`.
+
+3. The request inspector must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
+
+![Architecture diagram](diagrams_images/single-container-deployment_task2.png)
+
+The diagram shows the resulting architecture: external clients have no path into the application, while internal services reach the request inspector through the ClusterIP Service, which forwards traffic into the Pod managed by the Deployment.
+
+### Implementation
+
+We start by creating a Deployment with a single replica (the default). The task allows short periods of unavailability, so one instance is enough. We use the `traefik/whoami:v1.10` image and declare that the container listens on port `80`. The `kubectl create deployment` command automatically adds the label `app=whoami-inspector` to the Pods, which will be useful later when we create the Service.
+
+```bash
+kubectl create deployment whoami-inspector \
+    --image=traefik/whoami:v1.10 \
+    --port=80
+```
+
+To inspect the YAML that would be applied without actually creating the resource, use the `--dry-run=client -o yaml` flags:
+
+```bash
+kubectl create deployment whoami-inspector \
+    --image=traefik/whoami:v1.10 \
+    --port=80 \
+    --dry-run=client -o yaml
+```
+
+The output should look similar to this:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: whoami-inspector
+  name: whoami-inspector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: whoami-inspector
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: whoami-inspector
+    spec:
+      containers:
+      - image: traefik/whoami:v1.10
+        name: whoami
+        ports:
+        - containerPort: 80
+        resources: {}
+status: {}
+```
+
+Next, we expose the Deployment as a ClusterIP Service. ClusterIP is the right choice here because it gives other services inside the cluster a stable address for reaching the request inspector while keeping it inaccessible from outside.
+
+We use `kubectl expose` instead of creating the Service manually with `kubectl create service clusterip` because it automatically sets the selector to match the Deployment Pods, which is exactly the wiring we need. The Service listens on port `8080` and forwards traffic to the container port `80`.
+
+```bash
+kubectl expose deployment whoami-inspector \
+    --name=whoami-inspector-svc \
+    --type=ClusterIP \
+    --port=8080 \
+    --target-port=80
+```
+
+#### Verify resource creation
+
+To verify that the Pod is running, execute the following command, which filters Pods by the `app=whoami-inspector` label automatically set by `kubectl create deployment`:
+
+```bash
+kubectl get pods -l app=whoami-inspector
+```
+
+The output should look similar to this:
+
+```bash
+NAME                                READY   STATUS    RESTARTS   AGE
+whoami-inspector-5f4b8d7c9a-k2m7p   1/1     Running   0          12m
+```
+
+To verify that the Service is configured correctly, run:
+
+```bash
+kubectl get svc whoami-inspector-svc
+```
+
+The output should look similar to this:
+
+```bash
+NAME                   TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+whoami-inspector-svc   ClusterIP   10.96.145.203   <none>        8080/TCP   10m
+```
+
+From this output, we can confirm that internal access to the request inspector is available at [http://whoami-inspector-svc:8080](http://whoami-inspector-svc:8080) and that external access is not possible, since no external IP is assigned.
+
+#### Test the request inspector
+
+To test the request inspector, create a temporary Pod using [busybox](https://hub.docker.com/_/busybox):
+
+```bash
+kubectl run -it --rm --restart=Never busybox --image=busybox sh
+```
+
+Inside the busybox Pod, use `wget` to access the request inspector through the Service ClusterIP. The tool should respond with plain text showing HTTP request details.
+
+```bash
+wget -qO- http://whoami-inspector-svc:8080
+```
+
+The response should look similar to the example below:
+
+```text
+Hostname: whoami-inspector-5f4b8d7c9a-k2m7p
+IP: 127.0.0.1
+IP: 10.244.0.12
+RemoteAddr: 10.244.0.1:48372
+GET / HTTP/1.1
+Host: whoami-inspector-svc:8080
+User-Agent: Wget
+```
