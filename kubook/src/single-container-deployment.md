@@ -447,3 +447,141 @@ The response should look similar to the example below:
   "num_cpu": "2"
 }
 ```
+
+## Task 4: Design and deploy an internal welcome page
+
+Your team needs an internal welcome page that runs inside the cluster and displays server information such as the server address, server name, and request URI. This helps developers quickly confirm that routing and DNS resolution are working correctly.
+
+The welcome page must be packaged as a single container image ([nginxdemos/hello](https://hub.docker.com/r/nginxdemos/hello)). It does not need to be highly resilient, since brief periods of unavailability are acceptable.
+
+However, other services inside the cluster need a stable address to reach it, so Pod IPs alone are not enough. Make sure the welcome page is strictly for internal use and not accessible from outside the cluster.
+
+### Architectural design
+
+The task requires a single container image, brief downtime is acceptable, and the welcome page must be reachable only from inside the cluster. These constraints drive three design decisions:
+
+1. Because the application is a single container, a Deployment with one replica is enough. The Deployment creates a ReplicaSet that manages the Pod. If the Pod crashes, the ReplicaSet recreates it automatically at the cost of a short period of unavailability, which the task explicitly allows.
+
+2. Other services need a stable address to reach the welcome page. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`nginx-welcome-svc`) in front of the Pod. The Service provides a fixed cluster-internal DNS name and load-balances traffic to the Pod. It accepts requests on port `3000` and forwards them to the container's port `8080`.
+
+3. The welcome page must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
+
+![Architecture diagram](diagrams_images/single-container-deployment_task4.png)
+
+The diagram shows the resulting architecture: external clients have no path into the application, while internal services reach the welcome page through the ClusterIP Service, which forwards traffic into the Pod managed by the Deployment.
+
+### Implementation
+
+We start by creating a Deployment with a single replica (the default). The task allows short periods of unavailability, so one instance is enough. We use the `nginxdemos/hello:plain-text` image and declare that the container listens on port `8080`. The `kubectl create deployment` command automatically adds the label `app=nginx-welcome` to the Pods, which will be useful later when we create the Service.
+
+```bash
+kubectl create deployment nginx-welcome \
+    --image=nginxdemos/hello:plain-text \
+    --port=8080
+```
+
+To inspect the YAML that would be applied without actually creating the resource, use the `--dry-run=client -o yaml` flags:
+
+```bash
+kubectl create deployment nginx-welcome \
+    --image=nginxdemos/hello:plain-text \
+    --port=8080 \
+    --dry-run=client -o yaml
+```
+
+The output should look similar to this:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: nginx-welcome
+  name: nginx-welcome
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-welcome
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: nginx-welcome
+    spec:
+      containers:
+      - image: nginxdemos/hello:plain-text
+        name: hello
+        ports:
+        - containerPort: 8080
+        resources: {}
+status: {}
+```
+
+Next, we expose the Deployment as a ClusterIP Service. ClusterIP is the right choice here because it gives other services inside the cluster a stable address for reaching the welcome page while keeping it inaccessible from outside.
+
+We use `kubectl expose` instead of creating the Service manually with `kubectl create service clusterip` because it automatically sets the selector to match the Deployment Pods, which is exactly the wiring we need. The Service listens on port `3000` and forwards traffic to the container port `8080`.
+
+```bash
+kubectl expose deployment nginx-welcome \
+    --name=nginx-welcome-svc \
+    --type=ClusterIP \
+    --port=3000 \
+    --target-port=8080
+```
+
+#### Verify resource creation
+
+To verify that the Pod is running, execute the following command, which filters Pods by the `app=nginx-welcome` label automatically set by `kubectl create deployment`:
+
+```bash
+kubectl get pods -l app=nginx-welcome
+```
+
+The output should look similar to this:
+
+```bash
+NAME                             READY   STATUS    RESTARTS   AGE
+nginx-welcome-6c9d4f8b5a-t4w2q   1/1     Running   0          10m
+```
+
+To verify that the Service is configured correctly, run:
+
+```bash
+kubectl get svc nginx-welcome-svc
+```
+
+The output should look similar to this:
+
+```bash
+NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+nginx-welcome-svc   ClusterIP   10.98.231.114   <none>        3000/TCP   8m
+```
+
+From this output, we can confirm that internal access to the welcome page is available at [http://nginx-welcome-svc:3000](http://nginx-welcome-svc:3000) and that external access is not possible, since no external IP is assigned.
+
+#### Test the welcome page
+
+To test the welcome page, create a temporary Pod using [busybox](https://hub.docker.com/_/busybox):
+
+```bash
+kubectl run -it --rm --restart=Never busybox --image=busybox sh
+```
+
+Inside the busybox Pod, use `wget` to access the welcome page through the Service ClusterIP. The page should respond with plain text showing server information.
+
+```bash
+wget -qO- http://nginx-welcome-svc:3000
+```
+
+The response should look similar to the example below:
+
+```text
+Server address: 10.244.0.15:8080
+Server name: nginx-welcome-6c9d4f8b5a-t4w2q
+Date: 25/Mar/2026:10:32:18 +0000
+URI: /
+Request ID: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
+```
