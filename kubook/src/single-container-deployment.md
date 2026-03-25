@@ -585,3 +585,143 @@ Date: 25/Mar/2026:10:32:18 +0000
 URI: /
 Request ID: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
 ```
+
+## Task 5: Design and deploy an internal echo service
+
+Your team needs an internal echo service that runs inside the cluster and mirrors back the body of any HTTP request it receives. This helps developers test and validate payloads sent by other microservices without needing an external tool.
+
+The echo service must be packaged as a single container image ([jmalloc/echo-server](https://hub.docker.com/r/jmalloc/echo-server)). It does not need to be highly resilient, since brief periods of unavailability are acceptable.
+
+However, other services inside the cluster need a stable address to reach it, so Pod IPs alone are not enough. Make sure the echo service is strictly for internal use and not accessible from outside the cluster.
+
+### Architectural design
+
+The task requires a single container image, brief downtime is acceptable, and the echo service must be reachable only from inside the cluster. These constraints drive three design decisions:
+
+1. Because the application is a single container, a Deployment with one replica is enough. The Deployment creates a ReplicaSet that manages the Pod. If the Pod crashes, the ReplicaSet recreates it automatically at the cost of a short period of unavailability, which the task explicitly allows.
+
+2. Other services need a stable address to reach the echo service. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`echo-service-svc`) in front of the Pod. The Service provides a fixed cluster-internal DNS name and load-balances traffic to the Pod. It accepts requests on port `8080` and forwards them to the container's port `8080`.
+
+3. The echo service must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
+
+![Architecture diagram](diagrams_images/single-container-deployment_task5.png)
+
+The diagram shows the resulting architecture: external clients have no path into the application, while internal services reach the echo service through the ClusterIP Service, which forwards traffic into the Pod managed by the Deployment.
+
+### Implementation
+
+We start by creating a Deployment with a single replica (the default). The task allows short periods of unavailability, so one instance is enough. We use the `jmalloc/echo-server:0.3.7` image and declare that the container listens on port `8080`. The `kubectl create deployment` command automatically adds the label `app=echo-service` to the Pods, which will be useful later when we create the Service.
+
+```bash
+kubectl create deployment echo-service \
+    --image=jmalloc/echo-server:0.3.7 \
+    --port=8080
+```
+
+To inspect the YAML that would be applied without actually creating the resource, use the `--dry-run=client -o yaml` flags:
+
+```bash
+kubectl create deployment echo-service \
+    --image=jmalloc/echo-server:0.3.7 \
+    --port=8080 \
+    --dry-run=client -o yaml
+```
+
+The output should look similar to this:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: echo-service
+  name: echo-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echo-service
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: echo-service
+    spec:
+      containers:
+      - image: jmalloc/echo-server:0.3.7
+        name: echo-server
+        ports:
+        - containerPort: 8080
+        resources: {}
+status: {}
+```
+
+Next, we expose the Deployment as a ClusterIP Service. ClusterIP is the right choice here because it gives other services inside the cluster a stable address for reaching the echo service while keeping it inaccessible from outside.
+
+We use `kubectl expose` instead of creating the Service manually with `kubectl create service clusterip` because it automatically sets the selector to match the Deployment Pods, which is exactly the wiring we need. The Service listens on port `8080` and forwards traffic to the container port `8080`.
+
+```bash
+kubectl expose deployment echo-service \
+    --name=echo-service-svc \
+    --type=ClusterIP \
+    --port=8080 \
+    --target-port=8080
+```
+
+#### Verify resource creation
+
+To verify that the Pod is running, execute the following command, which filters Pods by the `app=echo-service` label automatically set by `kubectl create deployment`:
+
+```bash
+kubectl get pods -l app=echo-service
+```
+
+The output should look similar to this:
+
+```bash
+NAME                            READY   STATUS    RESTARTS   AGE
+echo-service-5b7d9f6c48-m6k3p   1/1     Running   0          7m
+```
+
+To verify that the Service is configured correctly, run:
+
+```bash
+kubectl get svc echo-service-svc
+```
+
+The output should look similar to this:
+
+```bash
+NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+echo-service-svc   ClusterIP   10.107.54.221   <none>        8080/TCP   5m
+```
+
+From this output, we can confirm that internal access to the echo service is available at [http://echo-service-svc:8080](http://echo-service-svc:8080) and that external access is not possible, since no external IP is assigned.
+
+#### Test the echo service
+
+To test the echo service, create a temporary Pod using [busybox](https://hub.docker.com/_/busybox):
+
+```bash
+kubectl run -it --rm --restart=Never busybox --image=busybox sh
+```
+
+Inside the busybox Pod, use `wget` to send a request to the echo service through the Service ClusterIP. The service should echo back the request details.
+
+```bash
+wget -qO- http://echo-service-svc:8080
+```
+
+The response should look similar to the example below:
+
+```text
+Request served by echo-service-5b7d9f6c48-m6k3p
+
+HTTP/1.1 GET /
+
+Host: echo-service-svc:8080
+User-Agent: Wget
+Connection: close
+```
