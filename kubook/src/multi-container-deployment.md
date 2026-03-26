@@ -761,3 +761,188 @@ The output should show the access log entry from the request we made through the
 ```
 
 This confirms that the sidecar pattern is working correctly: Tomcat writes access logs to the shared volume, and the sidecar reads and exposes them through its standard output.
+
+## Task 5: Design and deploy a web server with a content sync sidecar
+
+Your team needs an internal status page that displays up-to-date system information inside the cluster. The content must refresh automatically every 30 seconds without restarting the web server. The operations team wants the page to show the current timestamp and hostname so they can verify the content is being updated.
+
+The web server must run as an [nginx](https://hub.docker.com/_/nginx) container that serves whatever HTML files are present in its document root. A second container running [busybox](https://hub.docker.com/_/busybox) must act as a content sync sidecar that regenerates an HTML status page every 30 seconds and writes it to a shared volume where nginx can serve it.
+
+The web server must be reachable from other services inside the cluster through a stable address, but it must not be accessible from outside the cluster.
+
+### Architectural design
+
+The task requires two containers that share content data, brief downtime is acceptable, and the web server must be reachable only from inside the cluster. These constraints drive four design decisions:
+
+1. A single Deployment with one replica is enough because the application needs two containers in the same Pod, the nginx web server and the busybox content sync sidecar. The Deployment creates a ReplicaSet that manages the Pod. If the Pod crashes, the ReplicaSet recreates it automatically at the cost of a short period of unavailability, which the task explicitly allows.
+
+2. The sidecar needs to provide fresh content to nginx without modifying the nginx container or its configuration. A volume mounted at `/usr/share/nginx/html` in both containers solves this: the sidecar writes an `index.html` file to the shared volume every 30 seconds, and nginx serves it to incoming requests. This reverses the typical sidecar data flow: instead of the sidecar reading from the main container, the sidecar writes content that the main container serves. The shared volume acts as the data bridge between them.
+
+3. Other services need a stable address to reach the web server. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`nginx-content-svc`) in front of the Pod. The Service provides a fixed cluster-internal DNS name and forwards traffic to the nginx container on port `80`.
+
+4. The web server must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
+
+![Architecture diagram](diagrams_images/multi-container-deployment_task5.png)
+
+The diagram shows the resulting architecture: external clients have no path into the application, while internal services reach the web server through the ClusterIP Service, which forwards traffic into the Pod managed by the Deployment. Inside the Pod, the content sync sidecar regenerates the HTML status page every 30 seconds and writes it to a shared volume, which nginx reads and serves to clients.
+
+### Implementation
+
+Unlike single-container Pods, multi-container Pods cannot be created with `kubectl create deployment` alone. We need a YAML manifest to define both containers and the shared volume within the same Pod.
+
+We start by creating a file called `nginx-with-syncer.yaml`:
+
+```bash
+cat <<EOF > nginx-with-syncer.yaml
+```
+
+With the following content:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-with-syncer
+  labels:
+    app: nginx-with-syncer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-with-syncer
+  template:
+    metadata:
+      labels:
+        app: nginx-with-syncer
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: content
+              mountPath: /usr/share/nginx/html
+        - name: content-syncer
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              while true; do
+                cat <<HTML > /usr/share/nginx/html/index.html
+              <html>
+                <head><title>Status Page</title></head>
+                <body>
+                  <h1>System Status</h1>
+                  <p>Hostname: $(hostname)</p>
+                  <p>Last updated: $(date -u)</p>
+                </body>
+              </html>
+              HTML
+                sleep 30
+              done
+          volumeMounts:
+            - name: content
+              mountPath: /usr/share/nginx/html
+      volumes:
+        - name: content
+          emptyDir: {}
+EOF
+```
+
+There are a few things to note in this manifest:
+
+- **Shared volume**: An `emptyDir` volume called `content` is mounted at `/usr/share/nginx/html` in both containers. This is how nginx serves the files written by the sidecar. An `emptyDir` volume is created when the Pod is assigned to a node and exists as long as the Pod is running on that node, making it ideal for sharing temporary data between containers in the same Pod.
+- **Reversed data flow**: Unlike the previous tasks where the sidecar reads data produced by the main container, here the sidecar writes content that the main container serves. This demonstrates that the sidecar pattern is flexible: the shared volume can carry data in either direction.
+- **Sidecar container**: The `content-syncer` container runs an infinite loop that regenerates `index.html` every 30 seconds with the current timestamp and hostname. This means every request to nginx will return a page that was updated at most 30 seconds ago.
+- **Single replica**: One replica is enough since brief unavailability is acceptable.
+
+To verify the file was created correctly, run:
+
+```bash
+cat nginx-with-syncer.yaml
+```
+
+Apply the manifest to create the Deployment:
+
+```bash
+kubectl apply -f nginx-with-syncer.yaml
+```
+
+Next, we expose the Deployment as a ClusterIP Service. The Service listens on port `80` and forwards traffic to the nginx container port `80`.
+
+```bash
+kubectl expose deployment nginx-with-syncer \
+    --name=nginx-content-svc \
+    --type=ClusterIP \
+    --port=80 \
+    --target-port=80
+```
+
+#### Verify resource creation
+
+To verify that the Pod is running and that both containers are ready, execute the following command:
+
+```bash
+kubectl get pods -l app=nginx-with-syncer
+```
+
+The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the nginx container and the content-syncer container are running:
+
+```bash
+NAME                                 READY   STATUS    RESTARTS   AGE
+nginx-with-syncer-3f8a2b6d4c-j7w5t   2/2     Running   0          2m
+```
+
+To verify that the Service is configured correctly, run:
+
+```bash
+kubectl get svc nginx-content-svc
+```
+
+The output should look similar to this:
+
+```bash
+NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+nginx-content-svc   ClusterIP   10.96.156.33    <none>        80/TCP    1m
+```
+
+#### Test the web server
+
+To test the web server, create a temporary Pod and send a request through the Service:
+
+```bash
+kubectl run -it --rm --restart=Never busybox --image=busybox sh
+```
+
+Inside the busybox Pod, use `wget` to access the web server through the Service ClusterIP:
+
+```bash
+wget -qO- http://nginx-content-svc
+```
+
+The response should be the dynamically generated status page:
+
+```html
+<html>
+    <head><title>Status Page</title></head>
+    <body>
+        <h1>System Status</h1>
+        <p>Hostname: nginx-with-syncer-3f8a2b6d4c-j7w5t</p>
+        <p>Last updated: Wed Mar 26 10:30:00 UTC 2026</p>
+    </body>
+</html>
+```
+
+#### Verify the content refreshes
+
+To confirm that the sidecar is regenerating the page, wait at least 30 seconds and send a second request from inside the busybox Pod:
+
+```bash
+sleep 35 && wget -qO- http://nginx-content-svc
+```
+
+The `Last updated` timestamp should be different from the first request, confirming that the content sync sidecar is continuously regenerating the page.
+
+This confirms that the sidecar pattern is working correctly: the content-syncer writes fresh HTML to the shared volume every 30 seconds, and nginx serves it to clients.
