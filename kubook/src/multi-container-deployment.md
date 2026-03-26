@@ -379,133 +379,113 @@ The output should show error log entries from the httpd server, including startu
 
 This confirms that the sidecar pattern is working correctly: httpd writes error logs to the shared volume, and the sidecar reads and exposes them through its standard output.
 
-## Task 3: Design and deploy a web server with an access log audit sidecar
+## Task 3: Design and deploy a web server with a log adapter sidecar
 
-Your team needs an internal API gateway that reverse-proxies traffic to backend services inside the cluster. The compliance team requires a continuous audit trail of every incoming HTTP request for regulatory reporting, without altering the gateway configuration or logging into its container.
+Your team needs an internal web server that serves static content inside the cluster. The analytics team needs the access logs delivered in CSV format so they can ingest them directly into their data pipeline, but the web server produces logs in Common Log Format (CLF). The log format must be converted without modifying the web server configuration or accessing its container directly.
 
-The web server must run as a [caddy](https://hub.docker.com/_/caddy) container. A second container running [busybox](https://hub.docker.com/_/busybox) must act as an audit sidecar that continuously reads the Caddy access log and prints it to its own standard output.
+The web server must run as an [httpd](https://hub.docker.com/_/httpd) (Apache) container. A second container running [busybox](https://hub.docker.com/_/busybox) must act as a log adapter sidecar that continuously reads the httpd access log in Common Log Format, transforms each entry into CSV (`ip,timestamp,method,path,status`), and prints the result to its own standard output.
 
 The web server must be reachable from other services inside the cluster through a stable address, but it must not be accessible from outside the cluster.
 
 ### Architectural design
 
-The task requires two containers that share access log data, brief downtime is acceptable, and the web server must be reachable only from inside the cluster. These constraints drive four design decisions:
+The task requires two containers where the sidecar transforms log data from one format to another, brief downtime is acceptable, and the web server must be reachable only from inside the cluster. These constraints drive four design decisions:
 
-1. A single Deployment with one replica is enough because the application needs two containers in the same Pod, the Caddy web server and the busybox audit sidecar. The Deployment creates a ReplicaSet that manages the Pod. If the Pod crashes, the ReplicaSet recreates it automatically at the cost of a short period of unavailability, which the task explicitly allows.
+1. A single Deployment with one replica is enough because the application needs two containers in the same Pod, the httpd web server and the busybox log adapter sidecar. The Deployment creates a ReplicaSet that manages the Pod. If the Pod crashes, the ReplicaSet recreates it automatically at the cost of a short period of unavailability, which the task explicitly allows.
 
-2. The sidecar needs access to Caddy's access logs without execing into the Caddy container. A volume mounted at `/var/log/caddy` location in both containers solves this: Caddy writes its access log to the shared volume, and the sidecar continuously reads it with `tail -f`, streaming entries to its own standard output. This keeps the two containers decoupled: each has a single responsibility and the shared volume acts as the data bridge between them.
+2. The sidecar needs to read httpd's access logs and transform them from Common Log Format to CSV without execing into the httpd container. A volume mounted at `/usr/local/apache2/logs` location in both containers solves this: httpd writes its access log in Common Log Format to the shared volume, and the sidecar continuously reads it with `tail -f`, pipes each line through `awk` to extract the relevant fields, and outputs the result as CSV to its own standard output. This is the adapter pattern: the sidecar converts data from the format the main container produces into the format downstream consumers expect. The shared volume acts as the data bridge between them.
 
-3. Other services need a stable address to reach the web server. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`caddy-audit-svc`) in front of the Pod. The Service provides a fixed cluster-internal DNS name and forwards traffic to the Caddy container on port `80`.
+3. Other services need a stable address to reach the web server. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`httpd-adapter-svc`) in front of the Pod. The Service provides a fixed cluster-internal DNS name and forwards traffic to the httpd container on port `80`.
 
 4. The web server must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
 
 ![Architecture diagram](diagrams_images/multi-container-deployment_task3.png)
 
-The diagram shows the resulting architecture: external clients have no path into the application, while internal services reach the web server through the ClusterIP Service, which forwards traffic into the Pod managed by the Deployment. Inside the Pod, the Caddy container serves requests and writes access logs to a shared volume, which the audit sidecar reads and streams to standard output.
+The diagram shows the resulting architecture: external clients have no path into the application, while internal services reach the web server through the ClusterIP Service, which forwards traffic into the Pod managed by the Deployment. Inside the Pod, the httpd container serves requests and writes access logs in Common Log Format to a shared volume, which the log adapter sidecar reads, transforms to CSV, and streams to standard output.
 
 ### Implementation
 
 Unlike single-container Pods, multi-container Pods cannot be created with `kubectl create deployment` alone. We need a YAML manifest to define both containers and the shared volume within the same Pod.
 
-Caddy does not write access logs to a file by default. We need to provide a custom Caddyfile that enables file-based access logging. We will use a ConfigMap to inject this configuration into the Caddy container.
-
-We start by creating a file called `caddy-with-audit.yaml`:
+We start by creating a file called `httpd-with-adapter.yaml`:
 
 ```bash
-cat <<EOF > caddy-with-audit.yaml
+cat <<EOF > httpd-with-adapter.yaml
 ```
 
 With the following content:
 
 ```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: caddy-config
-data:
-  Caddyfile: |
-    {
-      log {
-        output file /var/log/caddy/access.log
-      }
-    }
-    :80 {
-      respond "Hello from Caddy"
-    }
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: caddy-with-audit
+  name: httpd-with-adapter
   labels:
-    app: caddy-with-audit
+    app: httpd-with-adapter
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: caddy-with-audit
+      app: httpd-with-adapter
   template:
     metadata:
       labels:
-        app: caddy-with-audit
+        app: httpd-with-adapter
     spec:
       containers:
-        - name: caddy
-          image: caddy:2.9
+        - name: httpd
+          image: httpd:2.4
           ports:
             - containerPort: 80
-          command:
-            - caddy
-            - run
-            - --config
-            - /etc/caddy/Caddyfile
           volumeMounts:
             - name: logs
-              mountPath: /var/log/caddy
-            - name: caddy-config
-              mountPath: /etc/caddy
-        - name: audit-sidecar
+              mountPath: /usr/local/apache2/logs
+        - name: log-adapter
           image: busybox:1.37
           command:
             - sh
             - -c
-            - tail -f /var/log/caddy/access.log
+            - |
+              tail -f /usr/local/apache2/logs/access_log | awk '{
+                ip=$1
+                split($4,ts,"["); timestamp=ts[2]
+                method=$6; gsub(/"/,"",method)
+                path=$7
+                status=$9
+                print ip","timestamp","method","path","status
+              }'
           volumeMounts:
             - name: logs
-              mountPath: /var/log/caddy
+              mountPath: /usr/local/apache2/logs
       volumes:
         - name: logs
           emptyDir: {}
-        - name: caddy-config
-          configMap:
-            name: caddy-config
 EOF
 ```
 
 There are a few things to note in this manifest:
 
-- **ConfigMap for Caddyfile**: Caddy does not write access logs to a file by default. The ConfigMap `caddy-config` contains a Caddyfile that configures Caddy to write access logs to `/var/log/caddy/access.log` and respond with a plain text message on port `80`.
-- **Shared volume**: An `emptyDir` volume called `logs` is mounted at `/var/log/caddy` in both containers. This is how the sidecar reads the log files written by Caddy. An `emptyDir` volume is created when the Pod is assigned to a node and exists as long as the Pod is running on that node, making it ideal for sharing temporary data between containers in the same Pod.
-- **Sidecar container**: The `audit-sidecar` container runs `tail -f` on the Caddy access log. This means it will continuously stream new log entries to its standard output, where they can be read with `kubectl logs`.
+- **Shared volume**: An `emptyDir` volume called `logs` is mounted at `/usr/local/apache2/logs` in both containers. This is how the sidecar reads the log files written by httpd. An `emptyDir` volume is created when the Pod is assigned to a node and exists as long as the Pod is running on that node, making it ideal for sharing temporary data between containers in the same Pod.
+- **Adapter sidecar**: The `log-adapter` container runs `tail -f` piped into `awk`. While a simple logging sidecar would stream the raw Common Log Format lines, this adapter sidecar parses each log entry and extracts five fields (`ip`, `timestamp`, `method`, `path`, `status`), outputting them as a CSV line. This is the adapter pattern: the sidecar transforms data from the format the main container produces (CLF) into the format downstream consumers need (CSV).
 - **Single replica**: One replica is enough since brief unavailability is acceptable.
 
 To verify the file was created correctly, run:
 
 ```bash
-cat caddy-with-audit.yaml
+cat httpd-with-adapter.yaml
 ```
 
-Apply the manifest to create the ConfigMap and the Deployment:
+Apply the manifest to create the Deployment:
 
 ```bash
-kubectl apply -f caddy-with-audit.yaml
+kubectl apply -f httpd-with-adapter.yaml
 ```
 
-Next, we expose the Deployment as a ClusterIP Service. The Service listens on port `80` and forwards traffic to the Caddy container port `80`.
+Next, we expose the Deployment as a ClusterIP Service. The Service listens on port `80` and forwards traffic to the httpd container port `80`.
 
 ```bash
-kubectl expose deployment caddy-with-audit \
-    --name=caddy-audit-svc \
+kubectl expose deployment httpd-with-adapter \
+    --name=httpd-adapter-svc \
     --type=ClusterIP \
     --port=80 \
     --target-port=80
@@ -516,27 +496,27 @@ kubectl expose deployment caddy-with-audit \
 To verify that the Pod is running and that both containers are ready, execute the following command:
 
 ```bash
-kubectl get pods -l app=caddy-with-audit
+kubectl get pods -l app=httpd-with-adapter
 ```
 
-The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the Caddy container and the audit-sidecar container are running:
+The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the httpd container and the log-adapter container are running:
 
 ```bash
-NAME                                READY   STATUS    RESTARTS   AGE
-caddy-with-audit-7c8d3e5f2a-r9k1w   2/2     Running   0          2m
+NAME                                  READY   STATUS    RESTARTS   AGE
+httpd-with-adapter-7c8d3e5f2a-r9k1w   2/2     Running   0          2m
 ```
 
 To verify that the Service is configured correctly, run:
 
 ```bash
-kubectl get svc caddy-audit-svc
+kubectl get svc httpd-adapter-svc
 ```
 
 The output should look similar to this:
 
 ```bash
-NAME              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
-caddy-audit-svc   ClusterIP   10.96.192.71    <none>        80/TCP    1m
+NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+httpd-adapter-svc   ClusterIP   10.96.192.71    <none>        80/TCP    1m
 ```
 
 #### Test the web server
@@ -550,39 +530,49 @@ kubectl run -it --rm --restart=Never busybox --image=busybox sh
 Inside the busybox Pod, use `wget` to access the web server through the Service ClusterIP:
 
 ```bash
-wget -qO- http://caddy-audit-svc
+wget -qO- http://httpd-adapter-svc
 ```
 
-The response should be the plain text message configured in the Caddyfile:
+The response should be the default Apache welcome page:
 
+```html
+<html>
+    <body>
+        <h1>It works!</h1>
+    </body>
+</html>
 ```
-Hello from Caddy
-```
 
-#### Verify the sidecar logs
+#### Verify the adapter output
 
-After sending the request above, exit the busybox Pod and verify that the sidecar captured the access log entry. First, get the Pod name:
+After sending the request above, exit the busybox Pod and verify that the adapter sidecar transformed the log entry. First, get the Pod name:
 
 ```bash
 POD_NAME=$(kubectl get pods \
-    -l app=caddy-with-audit \
+    -l app=httpd-with-adapter \
     -o jsonpath='{.items[0].metadata.name}') \
 && echo $POD_NAME
 ```
 
-Then, read the logs from the `audit-sidecar` container using the `-c` flag to specify which container to read from:
+Then, read the logs from the `log-adapter` container using the `-c` flag to specify which container to read from:
 
 ```bash
-kubectl logs $POD_NAME -c audit-sidecar
+kubectl logs $POD_NAME -c log-adapter
 ```
 
-The output should show the access log entry from the request we made through the busybox Pod. Caddy outputs access logs in JSON format by default:
+The output should show the access log entry transformed from httpd's native Common Log Format into CSV. Instead of the raw CLF:
 
 ```bash
-{"level":"info","ts":1741170600.000,"msg":"handled request","request":{"method":"GET","uri":"/","host":"caddy-audit-svc"},"status":200,"size":16,"duration":0.001}
+10.244.0.12 - - [26/Mar/2026:10:30:00 +0000] "GET / HTTP/1.1" 200 45
 ```
 
-This confirms that the sidecar pattern is working correctly: Caddy writes access logs to the shared volume, and the sidecar reads and exposes them through its standard output.
+The adapter sidecar outputs:
+
+```bash
+10.244.0.12,26/Mar/2026:10:30:00,GET,/,200
+```
+
+This confirms that the adapter pattern is working correctly: httpd writes access logs in Common Log Format to the shared volume, and the adapter sidecar reads them, extracts the relevant fields, and outputs them as CSV to its standard output for downstream consumers.
 
 ## Task 4: Design and deploy a Java application server with an access logging sidecar
 
