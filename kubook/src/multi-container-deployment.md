@@ -583,3 +583,181 @@ The output should show the access log entry from the request we made through the
 ```
 
 This confirms that the sidecar pattern is working correctly: Caddy writes access logs to the shared volume, and the sidecar reads and exposes them through its standard output.
+
+## Task 4: Design and deploy a Java application server with an access logging sidecar
+
+Your team needs an internal Java application server that hosts backend services inside the cluster. The platform team requires a dedicated stream of HTTP access logs from the application server for traffic analysis and capacity planning, without modifying the server configuration or accessing its container directly.
+
+The application server must run as a [tomcat](https://hub.docker.com/_/tomcat) container. A second container running [busybox](https://hub.docker.com/_/busybox) must act as an access logging sidecar that continuously reads the Tomcat access log and prints it to its own standard output.
+
+The application server must be reachable from other services inside the cluster through a stable address, but it must not be accessible from outside the cluster.
+
+### Architectural design
+
+The task requires two containers that share access log data, brief downtime is acceptable, and the application server must be reachable only from inside the cluster. These constraints drive four design decisions:
+
+1. A single Deployment with one replica is enough because the application needs two containers in the same Pod, the Tomcat application server and the busybox access logging sidecar. The Deployment creates a ReplicaSet that manages the Pod. If the Pod crashes, the ReplicaSet recreates it automatically at the cost of a short period of unavailability, which the task explicitly allows.
+
+2. The sidecar needs access to Tomcat's access logs without execing into the Tomcat container. A volume mounted at `/usr/local/tomcat/logs` location in both containers solves this: Tomcat writes its access log to the shared volume, and the sidecar continuously reads it with `tail -f`, streaming entries to its own standard output. This keeps the two containers decoupled: each has a single responsibility and the shared volume acts as the data bridge between them.
+
+3. Other services need a stable address to reach the application server. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`tomcat-logger-svc`) in front of the Pod. The Service provides a fixed cluster-internal DNS name and forwards traffic on port `80` to the Tomcat container on port `8080`.
+
+4. The application server must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
+
+![Architecture diagram](diagrams_images/multi-container-deployment_task4.png)
+
+The diagram shows the resulting architecture: external clients have no path into the application, while internal services reach the application server through the ClusterIP Service, which forwards traffic into the Pod managed by the Deployment. Inside the Pod, the Tomcat container serves requests and writes access logs to a shared volume, which the access logging sidecar reads and streams to standard output.
+
+### Implementation
+
+Unlike single-container Pods, multi-container Pods cannot be created with `kubectl create deployment` alone. We need a YAML manifest to define both containers and the shared volume within the same Pod.
+
+We start by creating a file called `tomcat-with-logger.yaml`:
+
+```bash
+cat <<EOF > tomcat-with-logger.yaml
+```
+
+With the following content:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tomcat-with-logger
+  labels:
+    app: tomcat-with-logger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tomcat-with-logger
+  template:
+    metadata:
+      labels:
+        app: tomcat-with-logger
+    spec:
+      containers:
+        - name: tomcat
+          image: tomcat:11.0-jre21
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: logs
+              mountPath: /usr/local/tomcat/logs
+        - name: access-logger
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              until ls /usr/local/tomcat/logs/localhost_access_log.*.txt 1>/dev/null 2>&1; do
+                sleep 1
+              done
+              tail -f /usr/local/tomcat/logs/localhost_access_log.*.txt
+          volumeMounts:
+            - name: logs
+              mountPath: /usr/local/tomcat/logs
+      volumes:
+        - name: logs
+          emptyDir: {}
+EOF
+```
+
+There are a few things to note in this manifest:
+
+- **Shared volume**: An `emptyDir` volume called `logs` is mounted at `/usr/local/tomcat/logs` in both containers. This is how the sidecar reads the log files written by Tomcat. An `emptyDir` volume is created when the Pod is assigned to a node and exists as long as the Pod is running on that node, making it ideal for sharing temporary data between containers in the same Pod.
+- **Sidecar container**: The `access-logger` container waits for the access log file to appear, then runs `tail -f` on it. Tomcat names its access log files with a date suffix (e.g., `localhost_access_log.2026-03-26.txt`), so the sidecar uses a wildcard pattern to match the current file. This means it will continuously stream new log entries to its standard output, where they can be read with `kubectl logs`.
+- **Port mapping**: Tomcat listens on port `8080` by default, unlike nginx or httpd which listen on port `80`. The Service will map external port `80` to the container's port `8080`, so internal clients can reach it on the standard HTTP port.
+- **Single replica**: One replica is enough since brief unavailability is acceptable.
+
+To verify the file was created correctly, run:
+
+```bash
+cat tomcat-with-logger.yaml
+```
+
+Apply the manifest to create the Deployment:
+
+```bash
+kubectl apply -f tomcat-with-logger.yaml
+```
+
+Next, we expose the Deployment as a ClusterIP Service. The Service listens on port `80` and forwards traffic to the Tomcat container port `8080`.
+
+```bash
+kubectl expose deployment tomcat-with-logger \
+    --name=tomcat-logger-svc \
+    --type=ClusterIP \
+    --port=80 \
+    --target-port=8080
+```
+
+#### Verify resource creation
+
+To verify that the Pod is running and that both containers are ready, execute the following command:
+
+```bash
+kubectl get pods -l app=tomcat-with-logger
+```
+
+The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the Tomcat container and the access-logger container are running:
+
+```bash
+NAME                                  READY   STATUS    RESTARTS   AGE
+tomcat-with-logger-4a9e1c7d3b-m6n2p   2/2     Running   0          2m
+```
+
+To verify that the Service is configured correctly, run:
+
+```bash
+kubectl get svc tomcat-logger-svc
+```
+
+The output should look similar to this:
+
+```bash
+NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+tomcat-logger-svc   ClusterIP   10.96.211.58    <none>        80/TCP    1m
+```
+
+#### Test the application server
+
+To test the application server, create a temporary Pod and send a request through the Service:
+
+```bash
+kubectl run -it --rm --restart=Never busybox --image=busybox sh
+```
+
+Inside the busybox Pod, use `wget` to access the application server through the Service ClusterIP:
+
+```bash
+wget -qO- http://tomcat-logger-svc
+```
+
+The response should be the default Tomcat welcome page HTML, or an HTTP 404 page if no web application is deployed. Either response confirms that Tomcat is running and reachable through the Service.
+
+#### Verify the sidecar logs
+
+After sending the request above, exit the busybox Pod and verify that the sidecar captured the access log entry. First, get the Pod name:
+
+```bash
+POD_NAME=$(kubectl get pods \
+    -l app=tomcat-with-logger \
+    -o jsonpath='{.items[0].metadata.name}') \
+&& echo $POD_NAME
+```
+
+Then, read the logs from the `access-logger` container using the `-c` flag to specify which container to read from:
+
+```bash
+kubectl logs $POD_NAME -c access-logger
+```
+
+The output should show the access log entry from the request we made through the busybox Pod:
+
+```bash
+10.244.0.15 - - [26/Mar/2026:10:30:00 +0000] "GET / HTTP/1.1" 404 762
+```
+
+This confirms that the sidecar pattern is working correctly: Tomcat writes access logs to the shared volume, and the sidecar reads and exposes them through its standard output.
