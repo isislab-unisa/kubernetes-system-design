@@ -614,7 +614,7 @@ We start by creating a Deployment with a single replica (the default). The task 
 
 ```bash
 kubectl create deployment echo-service \
-    --image=jmalloc/echo-server:0.3.7 \
+    --image=jmalloc/echo-server:0.3.6 \
     --port=8080
 ```
 
@@ -622,7 +622,7 @@ To inspect the YAML that would be applied without actually creating the resource
 
 ```bash
 kubectl create deployment echo-service \
-    --image=jmalloc/echo-server:0.3.7 \
+    --image=jmalloc/echo-server:0.3.6 \
     --port=8080 \
     --dry-run=client -o yaml
 ```
@@ -650,7 +650,7 @@ spec:
         app: echo-service
     spec:
       containers:
-      - image: jmalloc/echo-server:0.3.7
+      - image: jmalloc/echo-server:0.3.6
         name: echo-server
         ports:
         - containerPort: 8080
