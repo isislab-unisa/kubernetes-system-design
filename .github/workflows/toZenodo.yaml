@@ -28,11 +28,12 @@ jobs:
       - name: Install wkhtmltopdf
         run: |
           sudo apt-get update
-          sudo apt-get install -y wkhtmltopdf
+          sudo apt-get install -y weasyprint
+
 
       - name: Convert print.html to PDF
         run: |
-          wkhtmltopdf --enable-local-file-access kubook/book/print.html kubook/book/kubernetes-system-design.pdf
+          weasyprint kubook/book/print.html kubook/book/kubernetes-system-design.pdf
 
       - name: Get current date for release tag
         id: date

@@ -4,6 +4,7 @@ authors = ["Tiziano Citro", "Daniele De Vinco", "Vittorio Scarano"]
 language = "en"
 
 [output.html]
+additional-css = ["src/print-cover.css"]
 additional-js = ["src/add-toc.js"]
 
 [preprocessor.subsection-numbering]

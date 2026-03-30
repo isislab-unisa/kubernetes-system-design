@@ -1,17 +1,6 @@
 (function() {
   if (!window.location.pathname.endsWith('/print.html')) return;
 
-  function addPrintCoverPage(main) {
-    if (!main || document.getElementById('print-cover')) return;
-
-    var cover = document.createElement('div');
-    cover.id = 'print-cover';
-    cover.innerHTML =
-      '<img src="images/kubook.png" alt="Kubook cover" />';
-
-    main.insertBefore(cover, main.firstChild);
-  }
-
   document.addEventListener('DOMContentLoaded', function () {
     var content = document.getElementById('mdbook-content');
     if (!content) return;
@@ -21,8 +10,6 @@
 
     var style = document.createElement('style');
     style.textContent =
-      '#print-cover { break-after: page; min-height: 95vh; display: flex; align-items: center; justify-content: center; }' +
-      '#print-cover img { max-width: 100%; max-height: 90vh; object-fit: contain; }' +
       '#print-toc { break-after: page; padding: 2em 0; }' +
       '#print-toc > h1 { margin-bottom: 1.5em; border-bottom: none; }' +
       '#print-toc ul { list-style: none; padding: 0; margin: 0; }' +
@@ -60,8 +47,12 @@
 
     var main = content.querySelector('main');
     if (main) {
-      main.insertBefore(toc, main.firstChild);
-      addPrintCoverPage(main);
+      var cover = main.querySelector('.print-cover-page');
+      if (cover && cover.parentNode === main) {
+        main.insertBefore(toc, cover.nextSibling);
+      } else {
+        main.insertBefore(toc, main.firstChild);
+      }
     }
   });
 })();
