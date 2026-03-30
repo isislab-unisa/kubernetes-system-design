@@ -844,8 +844,8 @@ spec:
                 <head><title>Status Page</title></head>
                 <body>
                   <h1>System Status</h1>
-                  <p>Hostname: $(hostname)</p>
-                  <p>Last updated: $(date -u)</p>
+                  <p>Hostname: \$(hostname)</p>
+                  <p>Last updated: \$(date -u)</p>
                 </body>
               </html>
               HTML
