@@ -7,7 +7,7 @@
     var cover = document.createElement('div');
     cover.id = 'print-cover';
     cover.innerHTML =
-      '<img src="../images/kubook.png" alt="Kubook cover" />';
+      '<img src="images/kubook.png" alt="Kubook cover" />';
 
     main.insertBefore(cover, main.firstChild);
   }
