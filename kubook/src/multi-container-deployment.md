@@ -648,15 +648,8 @@ spec:
             - -c
             - |
               until [ -f /usr/local/apache2/logs/access_log ]; do sleep 1; done
-              tail -f /usr/local/apache2/logs/access_log | awk '{
-                ip=$1
-                split($4,ts,"["); timestamp=ts[2]
-                method=$6; gsub(/"/,"",method)
-                path=$7
-                status=$9
-                print ip","timestamp","method","path","status
-                fflush()
-              }'
+              tail -f /usr/local/apache2/logs/access_log | \
+                awk 'BEGIN{OFS=","} {print $1,substr($4,2),substr($6,2),$7,$9; fflush()}'
           volumeMounts:
             - name: logs
               mountPath: /usr/local/apache2/logs
@@ -670,7 +663,7 @@ There are a few things to note in this manifest:
 
 - **Shared volume**: An `emptyDir` volume called `logs` is mounted at `/usr/local/apache2/logs` in both containers. This is how the sidecar reads the log files written by httpd. An `emptyDir` volume is created when the Pod is assigned to a node and exists as long as the Pod is running on that node, making it ideal for sharing temporary data between containers in the same Pod.
 - **httpd command override**: The official `httpd:2.4` Docker image configures `CustomLog /proc/self/fd/1 common`, which redirects access logs to stdout instead of writing them to a file. The sidecar reads from the shared volume, so it needs a file. The httpd container's command uses `sed` to rewrite that directive to `CustomLog logs/access_log common` before starting `httpd-foreground`, making httpd write access logs to the shared volume where the sidecar can read them.
-- **Adapter sidecar**: The `log-adapter` container first waits for `access_log` to exist as httpd only creates the file on the first request, and the `emptyDir` volume starts empty, so `tail -f` would fail immediately without this guard. Once the file appears, it runs `tail -f` piped into `awk`. While a simple logging sidecar would stream the raw Common Log Format lines, this adapter sidecar parses each log entry and extracts five fields (`ip`, `timestamp`, `method`, `path`, `status`), outputting them as a CSV line. The `fflush()` call after each `print` is required because `awk` buffers its output when stdout is not a terminal — without it, `kubectl logs` would show nothing until the buffer fills up. This is the adapter pattern: the sidecar transforms data from the format the main container produces (CLF) into the format downstream consumers need (CSV).
+- **Adapter sidecar**: The `log-adapter` container first waits for `access_log` to exist — httpd only creates the file on the first request, and the `emptyDir` volume starts empty, so `tail -f` would fail immediately without this guard. Once the file appears, it runs `tail -f` piped into a single-line `awk` command. `BEGIN{OFS=","}` sets the output field separator to a comma, so the `print` statement separates each field with a comma automatically. `substr($4,2)` strips the leading `[` from the timestamp field, and `substr($6,2)` strips the leading `"` from the HTTP method. The `fflush()` call forces `awk` to flush its output buffer on every line — without it, `kubectl logs` would show nothing until the buffer fills up. This is the adapter pattern: the sidecar transforms data from the format the main container produces (CLF) into the format downstream consumers need (CSV).
 - **Single replica**: One replica is enough since brief unavailability is acceptable.
 
 To verify the file was created correctly, run:
