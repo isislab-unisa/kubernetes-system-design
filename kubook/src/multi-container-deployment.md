@@ -802,7 +802,7 @@ Unlike single-container Pods, multi-container Pods cannot be created with `kubec
 We start by creating a file called `nginx-with-syncer.yaml`:
 
 ```bash
-cat <<EOF > nginx-with-syncer.yaml
+cat <<'EOF' > nginx-with-syncer.yaml
 ```
 
 With the following content:
@@ -839,16 +839,7 @@ spec:
             - -c
             - |
               while true; do
-                cat <<HTML > /usr/share/nginx/html/index.html
-              <html>
-                <head><title>Status Page</title></head>
-                <body>
-                  <h1>System Status</h1>
-                  <p>Hostname: \$(hostname)</p>
-                  <p>Last updated: \$(date -u)</p>
-                </body>
-              </html>
-              HTML
+                echo "<html><head><title>Status Page</title></head><body><h1>System Status</h1><p>Hostname: $(hostname)</p><p>Last updated: $(date -u)</p></body></html>" > /usr/share/nginx/html/index.html
                 sleep 30
               done
           volumeMounts:
@@ -864,7 +855,7 @@ There are a few things to note in this manifest:
 
 - **Shared volume**: An `emptyDir` volume called `content` is mounted at `/usr/share/nginx/html` in both containers. This is how nginx serves the files written by the sidecar. An `emptyDir` volume is created when the Pod is assigned to a node and exists as long as the Pod is running on that node, making it ideal for sharing temporary data between containers in the same Pod.
 - **Reversed data flow**: Unlike the previous tasks where the sidecar reads data produced by the main container, here the sidecar writes content that the main container serves. This demonstrates that the sidecar pattern is flexible: the shared volume can carry data in either direction.
-- **Sidecar container**: The `content-syncer` container runs an infinite loop that regenerates `index.html` every 30 seconds with the current timestamp and hostname. This means every request to nginx will return a page that was updated at most 30 seconds ago.
+- **Sidecar container**: The `content-syncer` container runs an infinite loop that regenerates `index.html` every 30 seconds using `echo` with `$(hostname)` and `$(date -u)` command substitutions. The shell evaluates these at runtime, producing the Pod's actual hostname and the current UTC timestamp. This means every request to nginx will return a page that was updated at most 30 seconds ago.
 - **Single replica**: One replica is enough since brief unavailability is acceptable.
 
 To verify the file was created correctly, run:
