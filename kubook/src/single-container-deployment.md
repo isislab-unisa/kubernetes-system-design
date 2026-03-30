@@ -462,7 +462,7 @@ The task requires a single container image, brief downtime is acceptable, and th
 
 1. Because the application is a single container, a Deployment with one replica is enough. The Deployment creates a ReplicaSet that manages the Pod. If the Pod crashes, the ReplicaSet recreates it automatically at the cost of a short period of unavailability, which the task explicitly allows.
 
-2. Other services need a stable address to reach the welcome page. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`nginx-welcome-svc`) in front of the Pod. The Service provides a fixed cluster-internal DNS name and load-balances traffic to the Pod. It accepts requests on port `3000` and forwards them to the container's port `8080`.
+2. Other services need a stable address to reach the welcome page. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`nginx-welcome-svc`) in front of the Pod. The Service provides a fixed cluster-internal DNS name and load-balances traffic to the Pod. It accepts requests on port `3000` and forwards them to the container's port `80`.
 
 3. The welcome page must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
 
@@ -472,12 +472,12 @@ The diagram shows the resulting architecture: external clients have no path into
 
 ### Implementation
 
-We start by creating a Deployment with a single replica (the default). The task allows short periods of unavailability, so one instance is enough. We use the `nginxdemos/hello:plain-text` image and declare that the container listens on port `8080`. The `kubectl create deployment` command automatically adds the label `app=nginx-welcome` to the Pods, which will be useful later when we create the Service.
+We start by creating a Deployment with a single replica (the default). The task allows short periods of unavailability, so one instance is enough. We use the `nginxdemos/hello:plain-text` image and declare that the container listens on port `80`. The `kubectl create deployment` command automatically adds the label `app=nginx-welcome` to the Pods, which will be useful later when we create the Service.
 
 ```bash
 kubectl create deployment nginx-welcome \
     --image=nginxdemos/hello:plain-text \
-    --port=8080
+    --port=80
 ```
 
 To inspect the YAML that would be applied without actually creating the resource, use the `--dry-run=client -o yaml` flags:
@@ -485,7 +485,7 @@ To inspect the YAML that would be applied without actually creating the resource
 ```bash
 kubectl create deployment nginx-welcome \
     --image=nginxdemos/hello:plain-text \
-    --port=8080 \
+    --port=80 \
     --dry-run=client -o yaml
 ```
 
@@ -515,21 +515,21 @@ spec:
       - image: nginxdemos/hello:plain-text
         name: hello
         ports:
-        - containerPort: 8080
+        - containerPort: 80
         resources: {}
 status: {}
 ```
 
 Next, we expose the Deployment as a ClusterIP Service. ClusterIP is the right choice here because it gives other services inside the cluster a stable address for reaching the welcome page while keeping it inaccessible from outside.
 
-We use `kubectl expose` instead of creating the Service manually with `kubectl create service clusterip` because it automatically sets the selector to match the Deployment Pods, which is exactly the wiring we need. The Service listens on port `3000` and forwards traffic to the container port `8080`.
+We use `kubectl expose` instead of creating the Service manually with `kubectl create service clusterip` because it automatically sets the selector to match the Deployment Pods, which is exactly the wiring we need. The Service listens on port `3000` and forwards traffic to the container port `80`.
 
 ```bash
 kubectl expose deployment nginx-welcome \
     --name=nginx-welcome-svc \
     --type=ClusterIP \
     --port=3000 \
-    --target-port=8080
+    --target-port=80
 ```
 
 #### Verify resource creation
@@ -579,7 +579,7 @@ wget -qO- http://nginx-welcome-svc:3000
 The response should look similar to the example below:
 
 ```text
-Server address: 10.244.0.15:8080
+Server address: 10.244.0.15:80
 Server name: nginx-welcome-6c9d4f8b5a-t4w2q
 Date: 25/Mar/2026:10:32:18 +0000
 URI: /
