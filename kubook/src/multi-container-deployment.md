@@ -253,6 +253,13 @@ spec:
       containers:
         - name: httpd
           image: httpd:2.4
+          command:
+            - sh
+            - -c
+            - |
+              sed -i 's|ErrorLog /proc/self/fd/2|ErrorLog logs/error_log|' \
+                /usr/local/apache2/conf/httpd.conf
+              httpd-foreground
           ports:
             - containerPort: 80
           volumeMounts:
@@ -263,7 +270,9 @@ spec:
           command:
             - sh
             - -c
-            - tail -f /usr/local/apache2/logs/error_log
+            - |
+              until [ -f /usr/local/apache2/logs/error_log ]; do sleep 1; done
+              tail -f /usr/local/apache2/logs/error_log
           volumeMounts:
             - name: logs
               mountPath: /usr/local/apache2/logs
@@ -276,7 +285,8 @@ EOF
 There are a few things to note in this manifest:
 
 - **Shared volume**: An `emptyDir` volume called `logs` is mounted at `/usr/local/apache2/logs` in both containers. This is how the sidecar reads the log files written by httpd. An `emptyDir` volume is created when the Pod is assigned to a node and exists as long as the Pod is running on that node, making it ideal for sharing temporary data between containers in the same Pod.
-- **Sidecar container**: The `error-monitor` container runs `tail -f` on the httpd error log. This means it will continuously stream new log entries to its standard output, where they can be read with `kubectl logs`.
+- **httpd command override**: The official `httpd:2.4` Docker image configures `ErrorLog /proc/self/fd/2`, which redirects error logs to stderr instead of writing them to a file. The sidecar reads from the shared volume, so it needs a file. The httpd container's command uses `sed` to rewrite that directive to `ErrorLog logs/error_log` before starting `httpd-foreground`, making httpd write error logs to the shared volume where the sidecar can read them.
+- **Sidecar container**: The `error-monitor` container first waits for `error_log` to exist as httpd only creates the file on startup, and the `emptyDir` volume starts empty, so `tail -f` would fail immediately without this guard. Once the file appears, it continuously streams new log entries to its standard output, where they can be read with `kubectl logs`.
 - **Single replica**: One replica is enough since brief unavailability is acceptable.
 
 To verify the file was created correctly, run:
@@ -502,7 +512,15 @@ To verify that the Pod is running and that both containers are ready, execute th
 kubectl get pods -l app=tomcat-with-logger
 ```
 
-The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the Tomcat container and the access-logger container are running. Because Tomcat is a JVM-based server, it may take up to a minute before the Pod becomes fully ready — wait until `READY` shows `2/2` before proceeding:
+The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the Tomcat container and the access-logger container are running. Because Tomcat is a JVM-based server, it may take up to a minute before the Pod becomes fully ready.
+
+To monitor the Pod status in real-time, you can use `kubectl get pods` with the `--watch` flag:
+
+```bash
+kubectl get pods -l app=tomcat-with-logger --watch
+```
+
+Wait until `READY` shows `2/2` before proceeding:
 
 ```bash
 NAME                                  READY   STATUS    RESTARTS   AGE
@@ -536,7 +554,7 @@ Inside the busybox Pod, use `wget` to access the application server through the 
 wget -qO- http://tomcat-logger-svc
 ```
 
-The response should be the default Tomcat welcome page HTML, or an HTTP 404 page if no web application is deployed. Either response confirms that Tomcat is running and reachable through the Service.
+**The response should be HTTP 404 page by default as no web application is deployed**.
 
 #### Verify the sidecar logs
 
@@ -619,6 +637,13 @@ spec:
       containers:
         - name: httpd
           image: httpd:2.4
+          command:
+            - sh
+            - -c
+            - |
+              sed -i 's|CustomLog /proc/self/fd/1 common|CustomLog logs/access_log common|' \
+                /usr/local/apache2/conf/httpd.conf
+              httpd-foreground
           ports:
             - containerPort: 80
           volumeMounts:
@@ -630,6 +655,7 @@ spec:
             - sh
             - -c
             - |
+              until [ -f /usr/local/apache2/logs/access_log ]; do sleep 1; done
               tail -f /usr/local/apache2/logs/access_log | awk '{
                 ip=$1
                 split($4,ts,"["); timestamp=ts[2]
@@ -637,6 +663,7 @@ spec:
                 path=$7
                 status=$9
                 print ip","timestamp","method","path","status
+                fflush()
               }'
           volumeMounts:
             - name: logs
@@ -650,7 +677,8 @@ EOF
 There are a few things to note in this manifest:
 
 - **Shared volume**: An `emptyDir` volume called `logs` is mounted at `/usr/local/apache2/logs` in both containers. This is how the sidecar reads the log files written by httpd. An `emptyDir` volume is created when the Pod is assigned to a node and exists as long as the Pod is running on that node, making it ideal for sharing temporary data between containers in the same Pod.
-- **Adapter sidecar**: The `log-adapter` container runs `tail -f` piped into `awk`. While a simple logging sidecar would stream the raw Common Log Format lines, this adapter sidecar parses each log entry and extracts five fields (`ip`, `timestamp`, `method`, `path`, `status`), outputting them as a CSV line. This is the adapter pattern: the sidecar transforms data from the format the main container produces (CLF) into the format downstream consumers need (CSV).
+- **httpd command override**: The official `httpd:2.4` Docker image configures `CustomLog /proc/self/fd/1 common`, which redirects access logs to stdout instead of writing them to a file. The sidecar reads from the shared volume, so it needs a file. The httpd container's command uses `sed` to rewrite that directive to `CustomLog logs/access_log common` before starting `httpd-foreground`, making httpd write access logs to the shared volume where the sidecar can read them.
+- **Adapter sidecar**: The `log-adapter` container first waits for `access_log` to exist as httpd only creates the file on the first request, and the `emptyDir` volume starts empty, so `tail -f` would fail immediately without this guard. Once the file appears, it runs `tail -f` piped into `awk`. While a simple logging sidecar would stream the raw Common Log Format lines, this adapter sidecar parses each log entry and extracts five fields (`ip`, `timestamp`, `method`, `path`, `status`), outputting them as a CSV line. The `fflush()` call after each `print` is required because `awk` buffers its output when stdout is not a terminal — without it, `kubectl logs` would show nothing until the buffer fills up. This is the adapter pattern: the sidecar transforms data from the format the main container produces (CLF) into the format downstream consumers need (CSV).
 - **Single replica**: One replica is enough since brief unavailability is acceptable.
 
 To verify the file was created correctly, run:
