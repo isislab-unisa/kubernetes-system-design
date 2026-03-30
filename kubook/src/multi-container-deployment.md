@@ -117,7 +117,7 @@ kubectl expose deployment nginx-with-sidecar \
 To verify that the Pod is running and that both containers are ready, execute the following command:
 
 ```bash
-kubectl get pods -l app=nginx-with-sidecar
+kubectl get pods -l app=nginx-with-sidecar --watch
 ```
 
 The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the nginx container and the log-sidecar container are running:
@@ -316,7 +316,7 @@ kubectl expose deployment httpd-with-monitor \
 To verify that the Pod is running and that both containers are ready, execute the following command:
 
 ```bash
-kubectl get pods -l app=httpd-with-monitor
+kubectl get pods -l app=httpd-with-monitor --watch
 ```
 
 The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the httpd container and the error-monitor container are running:
@@ -509,18 +509,10 @@ kubectl expose deployment tomcat-with-logger \
 To verify that the Pod is running and that both containers are ready, execute the following command:
 
 ```bash
-kubectl get pods -l app=tomcat-with-logger
-```
-
-The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the Tomcat container and the access-logger container are running. Because Tomcat is a JVM-based server, it may take up to a minute before the Pod becomes fully ready.
-
-To monitor the Pod status in real-time, you can use `kubectl get pods` with the `--watch` flag:
-
-```bash
 kubectl get pods -l app=tomcat-with-logger --watch
 ```
 
-Wait until `READY` shows `2/2` before proceeding:
+The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the Tomcat container and the access-logger container are running. Because Tomcat is a JVM-based server, it may take up to a minute before the Pod becomes fully ready. Wait until `READY` shows `2/2` before proceeding:
 
 ```bash
 NAME                                  READY   STATUS    RESTARTS   AGE
@@ -708,7 +700,7 @@ kubectl expose deployment httpd-with-adapter \
 To verify that the Pod is running and that both containers are ready, execute the following command:
 
 ```bash
-kubectl get pods -l app=httpd-with-adapter
+kubectl get pods -l app=httpd-with-adapter --watch
 ```
 
 The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the httpd container and the log-adapter container are running:
@@ -909,7 +901,7 @@ kubectl expose deployment nginx-with-syncer \
 To verify that the Pod is running and that both containers are ready, execute the following command:
 
 ```bash
-kubectl get pods -l app=nginx-with-syncer
+kubectl get pods -l app=nginx-with-syncer --watch
 ```
 
 The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the nginx container and the content-syncer container are running:
