@@ -437,6 +437,11 @@ spec:
           image: tomcat:11.0-jre21
           ports:
             - containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 5
           volumeMounts:
             - name: logs
               mountPath: /usr/local/tomcat/logs
@@ -464,6 +469,7 @@ There are a few things to note in this manifest:
 - **Shared volume**: An `emptyDir` volume called `logs` is mounted at `/usr/local/tomcat/logs` in both containers. This is how the sidecar reads the log files written by Tomcat. An `emptyDir` volume is created when the Pod is assigned to a node and exists as long as the Pod is running on that node, making it ideal for sharing temporary data between containers in the same Pod.
 - **Sidecar container**: The `access-logger` container waits for the access log file to appear, then runs `tail -f` on it. Tomcat names its access log files with a date suffix (e.g., `localhost_access_log.2026-03-26.txt`), so the sidecar uses a wildcard pattern to match the current file. This means it will continuously stream new log entries to its standard output, where they can be read with `kubectl logs`.
 - **Port mapping**: Tomcat listens on port `8080` by default, unlike nginx or httpd which listen on port `80`. The Service will map external port `80` to the container's port `8080`, so internal clients can reach it on the standard HTTP port.
+- **Readiness probe**: Tomcat is a JVM-based server and takes longer to start than nginx or httpd. Without a readiness probe, the Pod transitions to `Running` before Tomcat is actually accepting connections, causing connection failures. The `tcpSocket` probe with a 30-second initial delay prevents the Service from routing traffic until Tomcat is ready.
 - **Single replica**: One replica is enough since brief unavailability is acceptable.
 
 To verify the file was created correctly, run:
@@ -496,7 +502,7 @@ To verify that the Pod is running and that both containers are ready, execute th
 kubectl get pods -l app=tomcat-with-logger
 ```
 
-The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the Tomcat container and the access-logger container are running:
+The output should look similar to this. Notice that the `READY` column shows `2/2`, confirming that both the Tomcat container and the access-logger container are running. Because Tomcat is a JVM-based server, it may take up to a minute before the Pod becomes fully ready — wait until `READY` shows `2/2` before proceeding:
 
 ```bash
 NAME                                  READY   STATUS    RESTARTS   AGE
