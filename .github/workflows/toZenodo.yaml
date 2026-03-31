@@ -17,13 +17,6 @@ jobs:
         with:
           node-version: 24
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build with mdBook
-        run: |
-          cargo install mdbook
-          mdbook build kubook
 
       - name: Install Chromium
         run: |
