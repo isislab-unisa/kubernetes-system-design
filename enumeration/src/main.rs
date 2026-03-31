@@ -35,6 +35,10 @@ impl Preprocessor for SubsectionNumbering {
     fn run(&self, _ctx: &PreprocessorContext, mut book: Book) -> Result<Book> {
         let mut chapter_num = 0;
 
+        if !try_add_cover_to_intro(&mut book.items) {
+            let _ = add_cover_to_first_chapter(&mut book.items);
+        }
+
         // Process each chapter with its number
         process_book_items(&mut book.items, &mut chapter_num);
 
@@ -55,6 +59,78 @@ fn process_book_items(items: &mut Vec<BookItem>, chapter_num: &mut usize) {
             process_book_items(&mut chapter.sub_items, chapter_num);
         }
     }
+}
+
+fn try_add_cover_to_intro(items: &mut Vec<BookItem>) -> bool {
+    for item in items {
+        if let BookItem::Chapter(chapter) = item {
+            if is_intro_chapter(chapter) {
+                add_print_cover_before_intro(chapter);
+                return true;
+            }
+
+            if try_add_cover_to_intro(&mut chapter.sub_items) {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+fn add_cover_to_first_chapter(items: &mut Vec<BookItem>) -> bool {
+    for item in items {
+        if let BookItem::Chapter(chapter) = item {
+            add_print_cover_before_intro(chapter);
+            return true;
+        }
+    }
+
+    false
+}
+
+fn is_intro_chapter(chapter: &Chapter) -> bool {
+    if let Some(path) = &chapter.path {
+        if path.to_string_lossy().ends_with("intro.md") {
+            return true;
+        }
+    }
+
+    let normalized_name = chapter
+        .name
+        .chars()
+        .filter(|c| !c.is_ascii_digit() && *c != '.' && !c.is_whitespace())
+        .collect::<String>()
+        .to_lowercase();
+    if normalized_name == "introduction" {
+        return true;
+    }
+
+    chapter
+        .content
+        .lines()
+        .map(str::trim)
+        .find(|line| line.starts_with("# "))
+        .map(|line| {
+            line.trim_start_matches("# ")
+                .chars()
+                .filter(|c| !c.is_ascii_digit() && *c != '.' && !c.is_whitespace())
+                .collect::<String>()
+                .eq_ignore_ascii_case("introduction")
+        })
+        .unwrap_or(false)
+}
+
+fn add_print_cover_before_intro(chapter: &mut Chapter) {
+    if chapter.content.contains("print-cover-page") {
+        return;
+    }
+
+    let cover = r#"<div class="print-cover-page">
+  <img src="images/kubook.png" alt="Kubook cover" />
+</div>"#;
+
+    chapter.content = format!("{cover}\n\n{}", chapter.content);
 }
 
 fn add_subsection_numbers(chapter: &mut Chapter, chapter_num: usize) {
