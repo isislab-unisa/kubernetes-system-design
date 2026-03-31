@@ -700,7 +700,7 @@ kubectl create namespace stable
 Next, we create a file called `ns-echo.yaml` that will be reused for both environments:
 
 ```bash
-cat <<EOF > ns-echo.yaml
+cat <<'EOF' > ns-echo.yaml
 ```
 
 With the following content:
