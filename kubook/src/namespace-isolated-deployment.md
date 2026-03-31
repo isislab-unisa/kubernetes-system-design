@@ -153,10 +153,7 @@ Note that the two Services share the same name (`web-app-svc`) but have differen
 To test the staging web application, create a temporary Pod inside the `staging` namespace and send a request through the Service:
 
 ```bash
-kubectl run -it --rm --restart=Never busybox \
-    --image=busybox \
-    -n staging \
-    -- sh
+kubectl run -n staging -it --rm --restart=Never busybox --image=busybox -- sh
 ```
 
 Inside the busybox Pod, use `wget` to access the web application through the Service:
@@ -389,7 +386,7 @@ Note that the two Services share the same name (`api-status-svc`) but have diffe
 To test the dev API status endpoint, create a temporary Pod inside the `dev` namespace and send a request through the Service:
 
 ```bash
-kubectl run -it --rm --restart=Never busybox --image=busybox -- sh
+kubectl run -n dev -it --rm --restart=Never busybox --image=busybox -- sh
 ```
 
 Inside the busybox Pod, use `wget` to access the API status endpoint through the Service:
@@ -456,4 +453,213 @@ The same can be done to access the QA API status endpoint:
 
 ```bash
 wget -qO- http://api-status-svc.qa.svc.cluster.local
+```
+
+## Task 3: Design and deploy an internal request debugging tool in team-isolated namespaces
+
+Your organization has two independent development teams, `team-alpha` and `team-beta`, that share the same cluster. Each team needs its own instance of an internal request debugging tool so they can inspect HTTP headers and connection details without interfering with each other.
+
+The debugging tool must run as a [traefik/whoami](https://hub.docker.com/r/traefik/whoami) container, which returns a plain-text summary of each incoming request including the server name, hostname, IP address, and headers. The server name will be set to the namespace through the downward API, making it easy to confirm namespace isolation from the response. It does not need to be highly resilient, since brief periods of unavailability are acceptable.
+
+Other services within each namespace need a stable address to reach the debugging tool, but it must not be accessible from outside the cluster.
+
+### Architectural design
+
+The task requires running the same application in two isolated environments, brief downtime is acceptable, and the application must be reachable only from inside each namespace. These constraints drive four design decisions:
+
+1. Two separate Namespaces (`team-alpha` and `team-beta`) provide the isolation boundary. Every Kubernetes resource is scoped to a Namespace, so Deployments, Pods, and Services created in one Namespace are invisible to the other. This lets both environments share the same resource names without conflict.
+
+2. Because the application is a single container and brief downtime is acceptable, a Deployment with one replica per Namespace is enough. Each Deployment creates its own ReplicaSet, which recreates the Pod automatically if it crashes, at the cost of a short period of unavailability that the task explicitly allows.
+
+3. Other services within each Namespace need a stable address to reach the debugging tool. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`request-debug-svc`) in front of the Pod in each Namespace. The Service provides a fixed cluster-internal DNS name and forwards traffic to the Pod. It accepts requests on port `80` and forwards them to the container's port `80`.
+
+4. The application must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
+
+![Architecture diagram](diagrams_images/namespace-isolated-deployment_task3.png)
+
+The diagram shows the resulting architecture: the `team-alpha` and `team-beta` Namespaces each contain an independent Deployment and ClusterIP Service with the same names. External clients have no path into either environment, while internal services reach the debugging tool through the ClusterIP Service in their own Namespace. Cross-namespace access is possible only via the fully qualified DNS name (`request-debug-svc.<namespace>.svc.cluster.local`), since short Service names resolve only within the same Namespace.
+
+### Implementation
+
+We start by creating the two namespaces:
+
+```bash
+kubectl create namespace team-alpha
+kubectl create namespace team-beta
+```
+
+Next, we create a file called `request-debug.yaml` that will be reused for both environments:
+
+```bash
+cat <<EOF > request-debug.yaml
+```
+
+With the following content:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: request-debug
+  labels:
+    app: request-debug
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: request-debug
+  template:
+    metadata:
+      labels:
+        app: request-debug
+    spec:
+      containers:
+        - name: whoami
+          image: traefik/whoami:v1.10
+          ports:
+            - containerPort: 80
+          env:
+            - name: WHOAMI_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+EOF
+```
+
+The `WHOAMI_NAME` environment variable is injected using the downward API, which allows a container to read its own Pod metadata at runtime. The `whoami` application uses this variable to override the `Name` field in its plain-text response, making it easy to confirm which namespace the Pod is running in.
+
+Notice that the manifest does not include a `namespace` field in the metadata. We will supply the target namespace at apply time using the `-n` flag, which lets us reuse the same manifest for both environments.
+
+To verify the file was created correctly, run:
+
+```bash
+cat request-debug.yaml
+```
+
+Apply the manifest to both namespaces:
+
+```bash
+kubectl apply -f request-debug.yaml -n team-alpha
+kubectl apply -f request-debug.yaml -n team-beta
+```
+
+Next, we expose each Deployment as a ClusterIP Service inside its respective namespace:
+
+```bash
+kubectl expose deployment request-debug \
+    -n team-alpha \
+    --name=request-debug-svc \
+    --type=ClusterIP \
+    --port=80 \
+    --target-port=80
+```
+
+```bash
+kubectl expose deployment request-debug \
+    -n team-beta \
+    --name=request-debug-svc \
+    --type=ClusterIP \
+    --port=80 \
+    --target-port=80
+```
+
+#### Verify resource creation
+
+To verify that the Pods are running in each namespace, execute the following commands:
+
+```bash
+kubectl get pods -n team-alpha -l app=request-debug
+kubectl get pods -n team-beta -l app=request-debug
+```
+
+The output for each should look similar to this:
+
+```bash
+NAME                             READY   STATUS    RESTARTS   AGE
+request-debug-5c8f9a7b64-k2v4p   1/1     Running   0          1m
+```
+
+To verify that the Services are configured correctly in each namespace, run:
+
+```bash
+kubectl get svc -n team-alpha request-debug-svc
+kubectl get svc -n team-beta request-debug-svc
+```
+
+The output for each should look similar to this:
+
+```bash
+NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+request-debug-svc   ClusterIP   10.96.203.17    <none>        80/TCP    1m
+```
+
+Note that the two Services share the same name (`request-debug-svc`) but have different Cluster IPs, because they are independent resources in separate namespaces.
+
+#### Test the request debugging tool
+
+To test the team-alpha debugging tool, create a temporary Pod inside the `team-alpha` namespace and send a request through the Service:
+
+```bash
+kubectl run -n team-alpha -it --rm --restart=Never busybox --image=busybox -- sh
+```
+
+Inside the busybox Pod, use `wget` to access the debugging tool through the Service:
+
+```bash
+wget -qO- http://request-debug-svc
+```
+
+The response should be a plain-text summary showing request and server details, with the `Name` field set to the namespace the Pod is running in:
+
+```text
+Name: team-alpha
+Hostname: request-debug-5c8f9a7b64-k2v4p
+IP: 127.0.0.1
+IP: 10.244.0.12
+RemoteAddr: 10.244.0.15:48762
+GET / HTTP/1.1
+Host: request-debug-svc
+User-Agent: Wget
+```
+
+To confirm that the response contains the correct namespace, run:
+
+```bash
+wget -qO- http://request-debug-svc | grep 'Name:'
+```
+
+The output should show the `team-alpha` namespace:
+
+```text
+Name: team-alpha
+```
+
+Repeat the same test for the `team-beta` namespace by running the busybox Pod with `-n team-beta`. The Name field should show `team-beta` instead of `team-alpha`, confirming that each Deployment is running in its own isolated namespace.
+
+#### Verify namespace isolation
+
+To confirm that the short Service name does not resolve across namespaces, create a temporary Pod in the default namespace:
+
+```bash
+kubectl run -it --rm --restart=Never busybox --image=busybox -- sh
+```
+
+Inside this Pod, attempt to reach the team-alpha debugging tool using its short service name:
+
+```bash
+wget -qO- --timeout=5 http://request-debug-svc
+```
+
+This fails because short Service names only resolve within the same namespace. Services in other namespaces are reachable using their fully qualified DNS name (`<service>.<namespace>.svc.cluster.local`):
+
+```bash
+wget -qO- http://request-debug-svc.team-alpha.svc.cluster.local
+```
+
+This request succeeds, demonstrating that Kubernetes namespaces scope resource visibility and RBAC, but do not enforce network-level isolation on their own. To restrict cross-namespace traffic, NetworkPolicies must be used in addition to namespaces.
+
+The same can be done to access the team-beta debugging tool:
+
+```bash
+wget -qO- http://request-debug-svc.team-beta.svc.cluster.local
 ```
