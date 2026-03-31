@@ -243,3 +243,217 @@ The same can be done to access the production web application:
 ```bash
 wget -qO- http://web-app-svc.production.svc.cluster.local
 ```
+
+## Task 2: Design and deploy an internal API status endpoint in dev and QA namespaces
+
+Your team needs to run the same internal API status endpoint in two isolated environments: `dev` and `qa`. Each environment must be fully self-contained, with its own Deployment and Service, so that developers and testers can work independently without interfering with each other.
+
+The API status endpoint must run as a [podinfo](https://hub.docker.com/r/stefanprodan/podinfo) container, which returns JSON metadata including a configurable message that displays the namespace it is running in, making it easy to confirm namespace isolation programmatically. It does not need to be highly resilient, since brief periods of unavailability are acceptable.
+
+Other services within each namespace need a stable address to reach the API status endpoint, but it must not be accessible from outside the cluster.
+
+### Architectural design
+
+The task requires running the same application in two isolated environments, brief downtime is acceptable, and the application must be reachable only from inside each namespace. These constraints drive four design decisions:
+
+1. Two separate Namespaces (`dev` and `qa`) provide the isolation boundary. Every Kubernetes resource is scoped to a Namespace, so Deployments, Pods, and Services created in one Namespace are invisible to the other. This lets both environments share the same resource names without conflict.
+
+2. Because the application is a single container and brief downtime is acceptable, a Deployment with one replica per Namespace is enough. Each Deployment creates its own ReplicaSet, which recreates the Pod automatically if it crashes, at the cost of a short period of unavailability that the task explicitly allows.
+
+3. Other services within each Namespace need a stable address to reach the API status endpoint. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`api-status-svc`) in front of the Pod in each Namespace. The Service provides a fixed cluster-internal DNS name and forwards traffic to the Pod. It accepts requests on port `80` and forwards them to the container's port `9898`.
+
+4. The application must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
+
+![Architecture diagram](diagrams_images/namespace-isolated-deployment_task2.png)
+
+The diagram shows the resulting architecture: the `dev` and `qa` Namespaces each contain an independent Deployment and ClusterIP Service with the same names. External clients have no path into either environment, while internal services reach the API status endpoint through the ClusterIP Service in their own Namespace. Cross-namespace access is possible only via the fully qualified DNS name (`api-status-svc.<namespace>.svc.cluster.local`), since short Service names resolve only within the same Namespace.
+
+### Implementation
+
+We start by creating the two namespaces:
+
+```bash
+kubectl create namespace dev
+kubectl create namespace qa
+```
+
+Next, we create a file called `api-status.yaml` that will be reused for both environments:
+
+```bash
+cat <<EOF > api-status.yaml
+```
+
+With the following content:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-status
+  labels:
+    app: api-status
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-status
+  template:
+    metadata:
+      labels:
+        app: api-status
+    spec:
+      containers:
+        - name: podinfo
+          image: stefanprodan/podinfo:6.4.0
+          ports:
+            - containerPort: 9898
+          env:
+            - name: PODINFO_UI_MESSAGE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+EOF
+```
+
+The `PODINFO_UI_MESSAGE` environment variable is injected using the downward API, which allows a container to read its own Pod metadata at runtime. The `podinfo` application uses this variable to set the `message` field in its JSON response, making it easy to confirm which namespace the Pod is running in.
+
+Notice that the manifest does not include a `namespace` field in the metadata. We will supply the target namespace at apply time using the `-n` flag, which lets us reuse the same manifest for both environments.
+
+To verify the file was created correctly, run:
+
+```bash
+cat api-status.yaml
+```
+
+Apply the manifest to both namespaces:
+
+```bash
+kubectl apply -f api-status.yaml -n dev
+kubectl apply -f api-status.yaml -n qa
+```
+
+Next, we expose each Deployment as a ClusterIP Service inside its respective namespace:
+
+```bash
+kubectl expose deployment api-status \
+    -n dev \
+    --name=api-status-svc \
+    --type=ClusterIP \
+    --port=80 \
+    --target-port=9898
+```
+
+```bash
+kubectl expose deployment api-status \
+    -n qa \
+    --name=api-status-svc \
+    --type=ClusterIP \
+    --port=80 \
+    --target-port=9898
+```
+
+#### Verify resource creation
+
+To verify that the Pods are running in each namespace, execute the following commands:
+
+```bash
+kubectl get pods -n dev -l app=api-status
+kubectl get pods -n qa -l app=api-status
+```
+
+The output for each should look similar to this:
+
+```bash
+NAME                          READY   STATUS    RESTARTS   AGE
+api-status-7d6c8b4f59-r3n8x   1/1     Running   0          1m
+```
+
+To verify that the Services are configured correctly in each namespace, run:
+
+```bash
+kubectl get svc -n dev api-status-svc
+kubectl get svc -n qa api-status-svc
+```
+
+The output for each should look similar to this:
+
+```bash
+NAME              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+api-status-svc    ClusterIP   10.96.185.42    <none>        80/TCP    1m
+```
+
+Note that the two Services share the same name (`api-status-svc`) but have different Cluster IPs, because they are independent resources in separate namespaces.
+
+#### Test the API status endpoint
+
+To test the dev API status endpoint, create a temporary Pod inside the `dev` namespace and send a request through the Service:
+
+```bash
+kubectl run -it --rm --restart=Never busybox --image=busybox -- sh
+```
+
+Inside the busybox Pod, use `wget` to access the API status endpoint through the Service:
+
+```bash
+wget -qO- http://api-status-svc
+```
+
+The response should be a JSON payload showing pod metadata, with the `message` field set to the namespace the Pod is running in:
+
+```json
+{
+  "hostname": "api-status-7d6c8b4f59-r3n8x",
+  "version": "6.4.0",
+  "revision": "",
+  "color": "#34577c",
+  "logo": "https://raw.githubusercontent.com/stefanprodan/podinfo/gh-pages/cuddle_clap.gif",
+  "message": "dev",
+  "goos": "linux",
+  "goarch": "amd64",
+  "runtime": "go1.21.0",
+  "num_goroutine": "8",
+  "num_cpu": "2"
+}
+```
+
+To confirm that the response contains the correct namespace, run:
+
+```bash
+wget -qO- http://api-status-svc | grep '"message"'
+```
+
+The output should show the `dev` namespace:
+
+```json
+"message": "dev",
+```
+
+Repeat the same test for the `qa` namespace by running the busybox Pod with `-n qa`. The message field should show `qa` instead of `dev`, confirming that each Deployment is running in its own isolated namespace.
+
+#### Verify namespace isolation
+
+To confirm that the short Service name does not resolve across namespaces, create a temporary Pod in the default namespace:
+
+```bash
+kubectl run -it --rm --restart=Never busybox --image=busybox -- sh
+```
+
+Inside this Pod, attempt to reach the dev API status endpoint using its short service name:
+
+```bash
+wget -qO- --timeout=5 http://api-status-svc
+```
+
+This fails because short Service names only resolve within the same namespace. Services in other namespaces are reachable using their fully qualified DNS name (`<service>.<namespace>.svc.cluster.local`):
+
+```bash
+wget -qO- http://api-status-svc.dev.svc.cluster.local
+```
+
+This request succeeds, demonstrating that Kubernetes namespaces scope resource visibility and RBAC, but do not enforce network-level isolation on their own. To restrict cross-namespace traffic, NetworkPolicies must be used in addition to namespaces.
+
+The same can be done to access the QA API status endpoint:
+
+```bash
+wget -qO- http://api-status-svc.qa.svc.cluster.local
+```
