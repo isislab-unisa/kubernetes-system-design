@@ -663,3 +663,196 @@ The same can be done to access the team-beta debugging tool:
 ```bash
 wget -qO- http://request-debug-svc.team-beta.svc.cluster.local
 ```
+
+## Task 4: Design and deploy a namespace verification endpoint in canary and stable namespaces
+
+Your team uses a canary release strategy and needs a simple endpoint in each environment that confirms which namespace a request is being served from. This allows developers to verify that traffic is reaching the correct environment before promoting a canary release.
+
+The endpoint must run as a [hashicorp/http-echo](https://hub.docker.com/r/hashicorp/http-echo) container, which returns a configurable plain-text response. The response text will include the namespace name, injected at runtime through the downward API and Kubernetes variable substitution in the container arguments, making it easy to confirm namespace isolation from the response. It does not need to be highly resilient, since brief periods of unavailability are acceptable.
+
+Other services within each namespace need a stable address to reach the endpoint, but it must not be accessible from outside the cluster.
+
+### Architectural design
+
+The task requires running the same application in two isolated environments, brief downtime is acceptable, and the application must be reachable only from inside each namespace. These constraints drive four design decisions:
+
+1. Two separate Namespaces (`canary` and `stable`) provide the isolation boundary. Every Kubernetes resource is scoped to a Namespace, so Deployments, Pods, and Services created in one Namespace are invisible to the other. This lets both environments share the same resource names without conflict.
+
+2. Because the application is a single container and brief downtime is acceptable, a Deployment with one replica per Namespace is enough. Each Deployment creates its own ReplicaSet, which recreates the Pod automatically if it crashes, at the cost of a short period of unavailability that the task explicitly allows.
+
+3. Other services within each Namespace need a stable address to reach the namespace verification endpoint. Pod IPs change every time a Pod is recreated, so we place a ClusterIP Service (`ns-echo-svc`) in front of the Pod in each Namespace. The Service provides a fixed cluster-internal DNS name and forwards traffic to the Pod. It accepts requests on port `80` and forwards them to the container's port `5678`.
+
+4. The application must not be accessible from outside the cluster. A ClusterIP Service has no external port and no route from outside the cluster network, so it satisfies this requirement by design. No Gateway, Ingress, or NodePort is needed.
+
+![Architecture diagram](diagrams_images/namespace-isolated-deployment_task4.png)
+
+The diagram shows the resulting architecture: the `canary` and `stable` Namespaces each contain an independent Deployment and ClusterIP Service with the same names. External clients have no path into either environment, while internal services reach the namespace verification endpoint through the ClusterIP Service in their own Namespace. Cross-namespace access is possible only via the fully qualified DNS name (`ns-echo-svc.<namespace>.svc.cluster.local`), since short Service names resolve only within the same Namespace.
+
+### Implementation
+
+We start by creating the two namespaces:
+
+```bash
+kubectl create namespace canary
+kubectl create namespace stable
+```
+
+Next, we create a file called `ns-echo.yaml` that will be reused for both environments:
+
+```bash
+cat <<EOF > ns-echo.yaml
+```
+
+With the following content:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ns-echo
+  labels:
+    app: ns-echo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ns-echo
+  template:
+    metadata:
+      labels:
+        app: ns-echo
+    spec:
+      containers:
+        - name: http-echo
+          image: hashicorp/http-echo:0.2.3
+          args:
+            - "-text=namespace: $(ECHO_NAMESPACE)"
+            - "-listen=:5678"
+          ports:
+            - containerPort: 5678
+          env:
+            - name: ECHO_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+EOF
+```
+
+The `ECHO_NAMESPACE` environment variable is injected using the downward API, which allows a container to read its own Pod metadata at runtime. Unlike the previous tasks, this container does not read the environment variable directly. Instead, the value is substituted into the container arguments using the `$(ECHO_NAMESPACE)` syntax. Kubernetes resolves this reference at Pod creation time, so the `http-echo` process receives `-text=namespace: canary` or `-text=namespace: stable` depending on which Namespace the Pod is scheduled in. The container then returns this text as the body of every HTTP response.
+
+Notice that the manifest does not include a `namespace` field in the metadata. We will supply the target namespace at apply time using the `-n` flag, which lets us reuse the same manifest for both environments.
+
+To verify the file was created correctly, run:
+
+```bash
+cat ns-echo.yaml
+```
+
+Apply the manifest to both namespaces:
+
+```bash
+kubectl apply -f ns-echo.yaml -n canary
+kubectl apply -f ns-echo.yaml -n stable
+```
+
+Next, we expose each Deployment as a ClusterIP Service inside its respective namespace:
+
+```bash
+kubectl expose deployment ns-echo \
+    -n canary \
+    --name=ns-echo-svc \
+    --type=ClusterIP \
+    --port=80 \
+    --target-port=5678
+```
+
+```bash
+kubectl expose deployment ns-echo \
+    -n stable \
+    --name=ns-echo-svc \
+    --type=ClusterIP \
+    --port=80 \
+    --target-port=5678
+```
+
+#### Verify resource creation
+
+To verify that the Pods are running in each namespace, execute the following commands:
+
+```bash
+kubectl get pods -n canary -l app=ns-echo
+kubectl get pods -n stable -l app=ns-echo
+```
+
+The output for each should look similar to this:
+
+```bash
+NAME                       READY   STATUS    RESTARTS   AGE
+ns-echo-6b8d4f7c59-w3k9m   1/1     Running   0          1m
+```
+
+To verify that the Services are configured correctly in each namespace, run:
+
+```bash
+kubectl get svc -n canary ns-echo-svc
+kubectl get svc -n stable ns-echo-svc
+```
+
+The output for each should look similar to this:
+
+```bash
+NAME           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+ns-echo-svc    ClusterIP   10.96.147.93    <none>        80/TCP    1m
+```
+
+Note that the two Services share the same name (`ns-echo-svc`) but have different Cluster IPs, because they are independent resources in separate namespaces.
+
+#### Test the namespace verification endpoint
+
+To test the canary endpoint, create a temporary Pod inside the `canary` namespace and send a request through the Service:
+
+```bash
+kubectl run -n canary -it --rm --restart=Never busybox --image=busybox -- sh
+```
+
+Inside the busybox Pod, use `wget` to access the endpoint through the Service:
+
+```bash
+wget -qO- http://ns-echo-svc
+```
+
+The response should be plain text showing the namespace the Pod is running in:
+
+```text
+namespace: canary
+```
+
+Repeat the same test for the `stable` namespace by running the busybox Pod with `-n stable`. The response should show `namespace: stable` instead of `namespace: canary`, confirming that each Deployment is running in its own isolated namespace.
+
+#### Verify namespace isolation
+
+To confirm that the short Service name does not resolve across namespaces, create a temporary Pod in the default namespace:
+
+```bash
+kubectl run -it --rm --restart=Never busybox --image=busybox -- sh
+```
+
+Inside this Pod, attempt to reach the canary endpoint using its short service name:
+
+```bash
+wget -qO- --timeout=5 http://ns-echo-svc
+```
+
+This fails because short Service names only resolve within the same namespace. Services in other namespaces are reachable using their fully qualified DNS name (`<service>.<namespace>.svc.cluster.local`):
+
+```bash
+wget -qO- http://ns-echo-svc.canary.svc.cluster.local
+```
+
+This request succeeds, demonstrating that Kubernetes namespaces scope resource visibility and RBAC, but do not enforce network-level isolation on their own. To restrict cross-namespace traffic, NetworkPolicies must be used in addition to namespaces.
+
+The same can be done to access the stable endpoint:
+
+```bash
+wget -qO- http://ns-echo-svc.stable.svc.cluster.local
+```
