@@ -390,6 +390,8 @@ nginx-gateway   NodePort   10.96.11.22    <none>        80:31234/TCP   5m
 
 A client outside the cluster has no route to a ClusterIP address, so the application Services are unreachable from the outside regardless of whether they are running. The Gateway is the only component with an externally accessible port, and it acts as the single controlled entry point that forwards traffic to the correct internal Service based on the request path.
 
+**Note**: If you are using the playground, running the command `kubectl get svc -n nginx-gateway` will show a `LoadBalancer` type with an external IP instead of `NodePort`, everything will still work the same.
+
 #### Configure Killercoda port forwarding to access the application from the browser
 
 If you are running this scenario in Killercoda, you can test the application from the terminal using `curl` as shown above, but you can also access it directly from the browser using Killercoda's traffic forwarding feature.
@@ -715,6 +717,8 @@ nginx-gateway   NodePort   10.96.11.22    <none>        80:31234/TCP   5m
 ```
 
 A client outside the cluster has no route to a ClusterIP address, so the application Services are unreachable from the outside regardless of whether they are running. The Gateway is the only component with an externally accessible port, and it acts as the single controlled entry point that forwards traffic to the correct internal Service based on the request hostname.
+
+**Note**: If you are using the playground, running the command `kubectl get svc -n nginx-gateway` will show a `LoadBalancer` type with an external IP instead of `NodePort`, everything will still work the same.
 
 #### Configure Killercoda port forwarding to access the application from the browser
 
