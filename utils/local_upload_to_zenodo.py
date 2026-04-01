@@ -9,11 +9,11 @@ load_dotenv.load_dotenv()
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 DEPOSITION_ID = "18786215"
 
-pdf_path = "../kubook/book/kubernetes-system-design.pdf"
+pdf_path = "../kubernetes-system-design/book/kubernetes-system-design.pdf"
 
 if not os.path.exists(pdf_path):
     print(f"Error: PDF file not found at {pdf_path}")
-    print("Please build the book first using: mdbook build kubook")
+    print("Please build the book first using: mdbook build kubernetes-system-design")
     sys.exit(1)
 
 headers = {'Authorization': f'Bearer {ACCESS_TOKEN}'}

@@ -32,7 +32,7 @@ jobs:
             --no-sandbox \
             --run-all-compositor-stages-before-draw \
             --virtual-time-budget=10000 \
-            --print-to-pdf=kubook/book/kubernetes-system-design.pdf \
+            --print-to-pdf=kubernetes-system-design/book/kubernetes-system-design.pdf \
             "https://isislab-unisa.github.io/kubernetessystemdesign/print.html"
 
       - name: Get current date for release tag
@@ -44,7 +44,7 @@ jobs:
         with:
           tag_name: v${{ steps.date.outputs.date }}
           name: Release ${{ steps.date.outputs.date }}
-          files: kubook/book/kubernetes-system-design.pdf
+          files: kubernetes-system-design/book/kubernetes-system-design.pdf
           draft: false
           prerelease: false
 
@@ -59,4 +59,4 @@ jobs:
       - name: Upload PDF to Zenodo
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
-        run: python utils/upload_to_zenodo_action.py --pdf kubook/book/kubernetes-system-design.pdf --deposition-id 18786215
+        run: python utils/upload_to_zenodo_action.py --pdf kubernetes-system-design/book/kubernetes-system-design.pdf --deposition-id 18786215

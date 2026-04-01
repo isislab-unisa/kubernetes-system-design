@@ -78,8 +78,8 @@ def main():
     parser.add_argument(
         '--pdf',
         type=str,
-        default='kubook/book/kubernetes-system-design.pdf',
-        help='Path to the PDF file (default: kubook/book/kubernetes-system-design.pdf)'
+        default='kubernetes-system-design/book/kubernetes-system-design.pdf',
+        help='Path to the PDF file (default: kubernetes-system-design/book/kubernetes-system-design.pdf)'
     )
     parser.add_argument(
         '--deposition-id',

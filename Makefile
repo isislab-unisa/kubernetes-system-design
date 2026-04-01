@@ -1,6 +1,6 @@
 .PHONY: all build live help
 
-BOOK=kubook
+BOOK=kubernetes-system-design
 
 all: build
 
