@@ -11,15 +11,15 @@ The topics are:
 1. Internet-facing Application Deployment
 
 ### Single-Container Application Deployment 
-In this topic, we cover the basics of deploying a simple application running in one container, including defining a Pod the Deployment with a single container image and the ClusterIP service to ensure a virtual IP to the application, for internal access.
+In this topic, we cover the basics of deploying a simple application running in one container, including defining a Pod, the Deployment with a single container image and the ClusterIP service to ensure a virtual IP to the application, for internal access.
 
 ### Multi-Containers Application Deployment 
-Here, we focus on applications that require multiple containers in the same Pod, such as an app container plus a helper sidecar, sharing networking and storage. We will add to the competences of the previous topic, the knowledge of multi-container pod patterns and container lifecycle, as well as understanding of shared volumes between containers. 
+Here, we focus on applications that require multiple containers in the same Pod, such as an app container plus a helper sidecar, sharing networking and storage. We will focus here on the knowledge of multi-container pod patterns and container lifecycle, as well as understanding of shared volumes between containers. 
 
 ### Namespace-isolated Application Deployment
 In this topic, we explore how to organize and isolate workloads using Kubernetes namespaces, applying deployments, services, and policies within dedicated logical environments. In particular, we will show how to design and deploy the same application with its internal Service into separate Namespaces to simulate staging and production environments. We include specific competences on Namespace isolation, resource scoping, and deploying objects into specific Namespaces.
 
-### Resilient application Deployment
+### Resilient Application Deployment
 We show, in this topic, tasks that are meant to design robust applications by configuring health checks, update strategies, replicas, and self-healing mechanisms so the system can recover from failures automatically. In particulare, we will show how to design and deploy an application and configure it to run with multiple replicas across the cluster by using ReplicaSets.
 
 ### Internet-facing Application Deployment 
