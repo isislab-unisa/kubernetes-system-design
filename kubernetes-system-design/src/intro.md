@@ -6,7 +6,9 @@ The second one was more general, as we recognized that material that was structu
 In a sense, those two motivations are complementary, two sides of the same coin: on one side, young and inexperienced master students that want to know more about Cloud-Native, and on the are side, professionals with experience that are trying to embed their knowledge into this technological valuable asset of computational landscape. And, from here, the decision was made. "*We are going to do it!*" and here we are, we made it!
 
 ## An open book (or "*How we wrote it*")
-
+We are strongly committed to contributing to the field using the paradygm of Open Science. As a consequence, our book is not only a static collection of our knowledge, thoughts and experiences but is shaped as a live, open artifact (through GitHub, see more info below) where it is possible to contribute to the next versions. 
+The book will be released on Zenodo open repository twice a year, but the most updated version can be found on GitHub repository, updated daily. 
+Contributions are welcomed, again, both as new topics and new tasks, and comments, feedback, questions can be provided on GitHub repository or through email: K8s-system-design.list@unisa.it 
 
 ## Learning objectives
    
