@@ -1,7 +1,15 @@
-# Introduction
+# Introduction (or "*Why we wrote it*")
+Welcome to the "Kubernetes System Design in Easy Steps" workbook! We want to begin this book by explaining our motivations to engage in this activity, motivations that stem from two different, and yet complementary, sources. 
+The first one is stricly related to our teaching. At the beginning of 2026, we were designing the Spring course on "*Cloud native computing*" for the Master degree in Computer Science at the University of Salerno. The course was re-designed in order to take into account the basis of Cloud-native technology, and therefore dealing, in a first phase, with fundamentals on Cloud, Virtual Machines, Containerization and Serverless Computing. The main course of the course (:-)) comes in the second half and was based on Kubernetes, which would have also laboratory activities that had to be engaging, concise, and effective for our master students. 
+In our vision, the laboratory exercises were to be hands-on and practical but, nevertheless, grounded into a system, abstract view of what we were proposing to use Kubernetes for. Something that would provide the necessary competence to effectively use Kubernetes in a "real", although simulated, environment, without loosing a broader, design-oriented, view, where every techological choice, configuration, deployment, etc. was explicitly linked to an explicit requirement of the given problem. 
+The second one was more general, as we recognized that material that was structured around the principles we wanted to base out teaching on, were not actually to be found in a systematic way in literature, considering  technical documentation, academic papers, books or blogs. And from here, the recognition that this book (ad we decided to write it) could be helpful not only for students in a teaching environment but also to professionals that are training themselves into Kubernetes, probably, adopting a more mature, experienced system-oriented approach to the technology. 
+In a sense, those two motivations are complementary, two sides of the same coin: on one side, young and inexperienced master students that want to know more about Cloud-Native, and on the are side, professionals with experience that are trying to embed their knowledge into this technological valuable asset of computational landscape. And, from here, the decision was made. "*We are going to do it!*" and here we are, we made it!
+
+## An open book (or "*How we wrote it*")
+
 
 ## Learning objectives
-
+   
 Test sequence xx YYYYYY Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque laoreet tortor nec eros mollis aliquam id eu libero. Aenean ac elit ex. Sed sit amet sagittis erat. Donec ornare arcu sed eros pharetra finibus. Fusce pharetra lacus iaculis, volutpat felis vel, tristique diam. Sed a leo vestibulum, rutrum libero quis, dapibus ex. Ut venenatis felis et facilisis blandit. Sed eu porttitor tellus. Maecenas feugiat congue malesuada. Phasellus in sem lectus. Proin commodo lobortis nibh, sed blandit metus venenatis in. Etiam sit amet lacus eget metus egestas congue vitae eu dolor. Integer ultrices malesuada nulla sed sollicitudin. Mauris commodo nulla mauris, sed luctus nulla posuere sit amet. Mauris sodales nisl lacus, et pretium erat sollicitudin ac.
 
 ## Tools
