@@ -1,4 +1,4 @@
-# Namespace-isolated deployment
+# Namespace-isolated application deployment
 
 Design and deploy the same application with its internal Service into separate Namespaces to simulate staging and production environments.
 

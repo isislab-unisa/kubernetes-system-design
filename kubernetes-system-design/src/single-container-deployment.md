@@ -1,4 +1,4 @@
-# Single-container deployment
+# Single-container application deployment
 
 Design and deploy a simple single-container application with a service for internal access.
 

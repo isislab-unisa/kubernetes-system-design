@@ -1,7 +1,9 @@
 # Structure of the book
+
 The book is organized as set of tasks, with a specific structure, that get grouped into different topics, depending on the nature of the problem, and the kind of solutions that are presented. 
 
-## The topics 
+## The topics
+
 The book is currently structured around 5 different topics. For each topic, a list of tasks is provided, with the structure outlined in the following subsection. 
 The topics are: 
 1. Single-Container Application Deployment 
@@ -10,22 +12,28 @@ The topics are:
 1. Resilient application Deployment
 1. Internet-facing Application Deployment
 
-### Single-Container Application Deployment 
+### Single-container application deployment
+
 In this topic, we cover the basics of deploying a simple application running in one container, including defining a Pod, the Deployment with a single container image and the ClusterIP service to ensure a virtual IP to the application, for internal access.
 
-### Multi-Containers Application Deployment 
+### Multi-container application deployment
+
 Here, we focus on applications that require multiple containers in the same Pod, such as an app container plus a helper sidecar, sharing networking and storage. We will focus here on the knowledge of multi-container pod patterns and container lifecycle, as well as understanding of shared volumes between containers. 
 
-### Namespace-isolated Application Deployment
+### Namespace-isolated application deployment
+
 In this topic, we explore how to organize and isolate workloads using Kubernetes namespaces, applying deployments, services, and policies within dedicated logical environments. In particular, we will show how to design and deploy the same application with its internal Service into separate Namespaces to simulate staging and production environments. We include specific competences on Namespace isolation, resource scoping, and deploying objects into specific Namespaces.
 
-### Resilient Application Deployment
+### Resilient application deployment
+
 We show, in this topic, tasks that are meant to design robust applications by configuring health checks, update strategies, replicas, and self-healing mechanisms so the system can recover from failures automatically. In particulare, we will show how to design and deploy an application and configure it to run with multiple replicas across the cluster by using ReplicaSets.
 
-### Internet-facing Application Deployment 
+### Internet-facing application deployment
+
 In this last topic, we show how to expose applications to external users through Kubernetes Gateway API with path-based routing rules, illustrating it with a Gateway sitting in front of Services.
 
 ## The tasks
+
 Every task in a topic in this book follows the same three-part structure: 
 1. a scenario that sets the context, 
 1. an architectural design that justifies the solution, and

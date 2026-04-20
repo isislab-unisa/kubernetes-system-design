@@ -1,4 +1,4 @@
-# Multi-container deployment
+# Multi-container application deployment
 
 Design and deploy a Pod with sidecar containers and a service for internal access.
 
