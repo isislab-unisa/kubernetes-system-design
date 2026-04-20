@@ -4,13 +4,14 @@ The book is organized as set of tasks, with a specific structure, that get group
 
 ## The topics
 
-The book is currently structured around 5 different topics. For each topic, a list of tasks is provided, with the structure outlined in the following subsection. 
+The book is currently structured around 5 different topics. For each topic, a list of tasks is provided, with the structure outlined in the following subsection.
+
 The topics are: 
-1. Single-Container Application Deployment 
-1. Multi-Containers Application Deployment 
-1. Namespace-isolated Application Deployment
-1. Resilient application Deployment
-1. Internet-facing Application Deployment
+1. Single-container application deployment 
+1. Multi-container application deployment 
+1. Namespace-isolated application deployment
+1. Resilient application deployment
+1. Internet-facing application deployment
 
 ### Single-container application deployment
 
@@ -34,10 +35,10 @@ In this last topic, we show how to expose applications to external users through
 
 ## The tasks
 
-Every task in a topic in this book follows the same three-part structure: 
-1. a scenario that sets the context, 
-1. an architectural design that justifies the solution, and
-1.  an implementation that walks through the commands.
+Every task in this book follows the same three-part structure:
+1. A scenario that sets the context.
+1. An architectural design that justifies the solution.
+1. An implementation that walks through the commands.
 
 ### Scenario
 

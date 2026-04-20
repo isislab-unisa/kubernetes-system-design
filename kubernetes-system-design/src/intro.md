@@ -1,7 +1,8 @@
 # Introduction (or "*Why we wrote it*")
+
 Welcome to the "Kubernetes System Design in Easy Steps" workbook! We want to begin this book by explaining our motivations to engage in this activity, motivations that arise from two different yet complementary sources. 
 
-The first motivation is stricly related to our teaching: at the beginning of 2026, we were designing the Spring course on "*Cloud native computing*" for the Master degree in Computer Science at the University of Salerno. The course was re-designed from a previous version (based only on Serverless Computing) in order to take into account the foundational basis of Cloud-native technology, and therefore supposed to be dealing, in a first half, with fundamentals on Cloud Computing, Virtual Machines, Containerization and Serverless Computing. The main course of the course (:-)) was supposed to come in the second half and was to be based on Kubernetes, which would include also laboratory activities that had to be engaging, concise, and effective for our master students. 
+The first motivation is stricly related to our teaching: at the beginning of 2026, we were designing the Spring course "*Cloud-native computing*" for the Master's degree in Computer Science at the [University of Salerno](https://web.unisa.it/en/university). The course was re-designed from a previous version (based only on serverless computing) in order to take into account the foundational basis of Cloud-native technology, and therefore supposed to be dealing, in the first half, with the fundamentals of Cloud computing, virtual machines, containerization and serverless computing. The main course of the course (🙂) was supposed to come in the second half and was to be based on Kubernetes, which would include also laboratory activities that had to be engaging, concise, and effective for our master students. 
 
 In our vision, the laboratory exercises were to be hands-on and practical but, nevertheless, grounded into a system-wide, abstract view of what we were proposing to use Kubernetes for. Something that would provide the necessary competence to effectively use Kubernetes in a "real", although simulated, environment, without loosing a broader, design-oriented, view, where every techological choice, configuration, deployment, etc. was explicitly linked to an explicit requirement of the given problem. 
 
@@ -12,6 +13,7 @@ The motivation here was that this book could be helpful not only for students in
 In a sense, those two motivations were complementary, two sides of the same coin: on one side, young and inexperienced master students that want to know more about Cloud-Native, and on the other side, professionals with significative experience, that were trying to embed into their knowledge this technological valuable asset of current computational landscape, i.e. Kubernetes. And, from here, the decision was made: "*We are going to do it!*" and here we are, we made it!
 
 ## An open book (or "*How we wrote it*")
+
 We are strongly committed to contributing to the field using the paradygm of Open Science. As a consequence, our book is not only a static collection of our knowledge, thoughts and experiences but is shaped as a live, open artifact (through GitHub, see more info below) where it is possible to contribute to the next versions. The book will be released under XXX public licens (`TODO`) and will be freely available.
 
 The book will also be released  on Zenodo open repository in PDF twice a year, but the most updated version can be found on GitHub repository, updated daily. 
@@ -19,7 +21,7 @@ The book will also be released  on Zenodo open repository in PDF twice a year, b
 Contributions are welcomed, again, both as new topics and new tasks, and comments, feedback, questions can be provided on GitHub repository or through email: K8s-system-design.list@unisa.it 
 
 ## Learning objectives
-   
+
 Test sequence xx YYYYYY Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque laoreet tortor nec eros mollis aliquam id eu libero. Aenean ac elit ex. Sed sit amet sagittis erat. Donec ornare arcu sed eros pharetra finibus. Fusce pharetra lacus iaculis, volutpat felis vel, tristique diam. Sed a leo vestibulum, rutrum libero quis, dapibus ex. Ut venenatis felis et facilisis blandit. Sed eu porttitor tellus. Maecenas feugiat congue malesuada. Phasellus in sem lectus. Proin commodo lobortis nibh, sed blandit metus venenatis in. Etiam sit amet lacus eget metus egestas congue vitae eu dolor. Integer ultrices malesuada nulla sed sollicitudin. Mauris commodo nulla mauris, sed luctus nulla posuere sit amet. Mauris sodales nisl lacus, et pretium erat sollicitudin ac.
 
 ## Tools
