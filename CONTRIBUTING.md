@@ -49,3 +49,12 @@ To verify that your branch name adheres to these guidelines, you can use the fol
 ```bash
 git rev-parse --abbrev-ref HEAD | grep -Eq '^(feat|fix|chore|refactor|docs)\/[a-z0-9]+(-[a-z0-9]+)*$' && echo "Branch name is compliant" || echo "Invalid branch name"
 ```
+
+## Build Latex book
+
+```bash
+# install pandoc https://pandoc.org/installing.html
+cd kubernetes-system-design/book
+pandoc print.html -f html -t latex -s --resource-path=. -o print.tex
+# the images folder has to be included in the folder of the latex project
+```
