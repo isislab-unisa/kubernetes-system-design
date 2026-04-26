@@ -21,10 +21,33 @@ The book will also be released  on Zenodo open repository in PDF twice a year, b
 Contributions are welcomed, again, both as new topics and new tasks, and comments, feedback, questions can be provided on GitHub repository or through email: K8s-system-design.list@unisa.it 
 
 ## Learning objectives
+   
+This book is meant to address the learning objectives of a classical Kubernetes course, addressing, one by one, the most important characteristics and the fundamental bricks to be used. 
+In particular, we are planning to address the practical understanding of: Pods, Deployments, ClusterIP services,  multi-container Pod patterns, container lifecycle, volumes between containers, Namespace isolation, Resource scoping,  deploying objects into specific Namespaces, ReplicaSets and Gateway API.
 
-Test sequence xx YYYYYY Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque laoreet tortor nec eros mollis aliquam id eu libero. Aenean ac elit ex. Sed sit amet sagittis erat. Donec ornare arcu sed eros pharetra finibus. Fusce pharetra lacus iaculis, volutpat felis vel, tristique diam. Sed a leo vestibulum, rutrum libero quis, dapibus ex. Ut venenatis felis et facilisis blandit. Sed eu porttitor tellus. Maecenas feugiat congue malesuada. Phasellus in sem lectus. Proin commodo lobortis nibh, sed blandit metus venenatis in. Etiam sit amet lacus eget metus egestas congue vitae eu dolor. Integer ultrices malesuada nulla sed sollicitudin. Mauris commodo nulla mauris, sed luctus nulla posuere sit amet. Mauris sodales nisl lacus, et pretium erat sollicitudin ac.
+Those concept should already been treated by the learner, at least theirs principles, and, as an example, can be found in the first 10 chapters of the ``The Kubernetes Book'' by Nigel Poulton. 
 
 ## Tools
+Here we describe some useful tools to use when learning the tasks that we present. 
+
+### Killercoda
+
+The best way to learn the tools used in this course is to use them hands-on in a safe, interactive environment with no local setup required. This is why we chose [Killercoda](https://killercoda.com/about) as our playground:
+
+> Killercoda is a platform for learning and practicing skills in a safe and interactive environment. It provides hands-on experience with real-world tools and techniques, allowing users to develop their skills and knowledge in a practical way.
+
+Killercoda offers a wide range of scenarios for various topics and skill levels. For this course specifically, we created a custom playground that includes all the tools and resources needed to complete the tasks. You can access it at [https://killercoda.com/isislab/scenario/exam-playground](https://killercoda.com/isislab/scenario/exam-playground).
+
+#### How to use the Killercoda playground
+
+Navigate to [https://killercoda.com/isislab/scenario/exam-playground](https://killercoda.com/isislab/scenario/exam-playground) and start the scenario. This will provision a Kubernetes cluster and deploy all the resources needed for the tasks.
+
+[![Killercoda scenario start](images/tutorial_killercoda_1.png)](images/tutorial_killercoda_1.png)
+
+Once the setup completes, you will have a personal playground instance with a running Kubernetes cluster and a terminal with all the necessary tools pre-installed. Use this terminal to run `kubectl` commands and interact with the cluster as you work through the tasks.
+
+[![Killercoda playground terminal](images/tutorial_killercoda_2.png)](images/tutorial_killercoda_2.png)
+
 
 ### Excalidraw
 
@@ -50,23 +73,6 @@ The image below shows the import process in VS Code, but the steps are identical
 
 [![Importing Kubernetes icons library in Excalidraw in VSCode](images/tutorial_asset.png)](images/tutorial_asset.png)
 
-### Killercoda
-
-The best way to learn the tools used in this course is to use them hands-on in a safe, interactive environment with no local setup required. This is why we chose [Killercoda](https://killercoda.com/about) as our playground:
-
-> Killercoda is a platform for learning and practicing skills in a safe and interactive environment. It provides hands-on experience with real-world tools and techniques, allowing users to develop their skills and knowledge in a practical way.
-
-Killercoda offers a wide range of scenarios for various topics and skill levels. For this course specifically, we created a custom playground that includes all the tools and resources needed to complete the tasks. You can access it at [https://killercoda.com/isislab/scenario/exam-playground](https://killercoda.com/isislab/scenario/exam-playground).
-
-#### How to use the Killercoda playground
-
-Navigate to [https://killercoda.com/isislab/scenario/exam-playground](https://killercoda.com/isislab/scenario/exam-playground) and start the scenario. This will provision a Kubernetes cluster and deploy all the resources needed for the tasks.
-
-[![Killercoda scenario start](images/tutorial_killercoda_1.png)](images/tutorial_killercoda_1.png)
-
-Once the setup completes, you will have a personal playground instance with a running Kubernetes cluster and a terminal with all the necessary tools pre-installed. Use this terminal to run `kubectl` commands and interact with the cluster as you work through the tasks.
-
-[![Killercoda playground terminal](images/tutorial_killercoda_2.png)](images/tutorial_killercoda_2.png)
 
 ### Busybox
 
