@@ -25,7 +25,7 @@ Contributions are welcomed, again, both as new topics and new tasks, and comment
 This book is meant to address the learning objectives of a classical Kubernetes course, addressing, one by one, the most important characteristics and the fundamental bricks to be used. 
 In particular, we are planning to address the practical understanding of: Pods, Deployments, ClusterIP services,  multi-container Pod patterns, container lifecycle, volumes between containers, Namespace isolation, Resource scoping,  deploying objects into specific Namespaces, ReplicaSets and Gateway API.
 
-Those concept should already been treated by the learner, at least theirs principles, and, as an example, can be found in the first 10 chapters of the ``The Kubernetes Book'' by Nigel Poulton. 
+Those concept should already been treated by the learner, at least theirs principles, and, as an example, can be found in the first 10 chapters of the *The Kubernetes Book* by Nigel Poulton. 
 
 ## Tools
 
