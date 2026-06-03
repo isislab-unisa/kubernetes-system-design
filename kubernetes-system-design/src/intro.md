@@ -14,20 +14,21 @@ In a sense, those two motivations were complementary, two sides of the same coin
 
 ## An open book (or "*How we wrote it*")
 
-We are strongly committed to contributing to the field using the paradygm of Open Science. As a consequence, our book is not only a static collection of our knowledge, thoughts and experiences but is shaped as a live, open artifact (through GitHub, see more info below) where it is possible to contribute to the next versions. The book will be released under XXX public licens (`TODO`) and will be freely available.
+We are strongly committed to contributing to the field using the paradygm of Open Science. As a consequence, our book is not only a static collection of our knowledge, thoughts and experiences but is shaped as a live, open artifact (through GitHub, see more info below) where it is possible to contribute to the next versions. The book will be released under the Creative Commons Attribution 4.0 International public license ([https://creativecommons.org/licenses/by/4.0](https://creativecommons.org/licenses/by/4.0)) and will be freely available.
 
 The book will also be released  on Zenodo open repository in PDF twice a year, but the most updated version can be found on GitHub repository, updated daily. 
 
 Contributions are welcomed, again, both as new topics and new tasks, and comments, feedback, questions can be provided on GitHub repository or through email: K8s-system-design.list@unisa.it 
 
 ## Learning objectives
-   
+
 This book is meant to address the learning objectives of a classical Kubernetes course, addressing, one by one, the most important characteristics and the fundamental bricks to be used. 
 In particular, we are planning to address the practical understanding of: Pods, Deployments, ClusterIP services,  multi-container Pod patterns, container lifecycle, volumes between containers, Namespace isolation, Resource scoping,  deploying objects into specific Namespaces, ReplicaSets and Gateway API.
 
 Those concept should already been treated by the learner, at least theirs principles, and, as an example, can be found in the first 10 chapters of the ``The Kubernetes Book'' by Nigel Poulton. 
 
 ## Tools
+
 Here we describe some useful tools to use when learning the tasks that we present. 
 
 ### Killercoda
@@ -40,7 +41,7 @@ Killercoda offers a wide range of scenarios for various topics and skill levels.
 
 #### How to use the Killercoda playground
 
-Navigate to [https://killercoda.com/isislab/scenario/exam-playground](https://killercoda.com/isislab/scenario/exam-playground) and start the scenario. This will provision a Kubernetes cluster and deploy all the resources needed for the tasks.
+Navigate to [https://killercoda.com/isislab/scenario/exam-playground](https://killercoda.com/isislab/scenario/exam-playground) and start the scenario. This will provision a Kubernetes cluster and deploy all the resources as well as all templates and manifests that you will need to complete the tasks.
 
 [![Killercoda scenario start](images/tutorial_killercoda_1.png)](images/tutorial_killercoda_1.png)
 
